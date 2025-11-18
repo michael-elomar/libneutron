@@ -2,6 +2,7 @@
 
 int main(int argc, char *argv[])
 {
-	test_function();
+	struct syskit_loop *loop = syskit_loop_create();
+	printf("loop address : %d\n", loop);
 	return 0;
 }
