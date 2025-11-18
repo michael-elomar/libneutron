@@ -21,7 +21,7 @@ set(INCLUDE
 	src
 )
 
-add_library(${PROJECT_NAME} ${SRC_FILES})
+add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 
 add_executable(test_loop examples/test_loop.c)
