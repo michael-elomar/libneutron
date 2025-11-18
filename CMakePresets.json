@@ -1,0 +1,22 @@
+{
+    "version": 3,
+    "configurePresets": [
+		{
+			"name": "linux",
+			"generator": "Unix Makefiles",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "1",
+				"CMAKE_BUILD_TYPE": "$env{BUILD_TYPE}",
+				"CMAKE_PROJECT_VERSION": "$env{VERSION}"
+			}
+		}
+    ],
+    "buildPresets": [
+		{
+			"name": "linux",
+			"configurePreset": "linux",
+			"jobs": 10
+		}
+    ]
+}
