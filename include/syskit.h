@@ -1,6 +1,7 @@
 #include <priv.h>
 
 struct syskit_loop;
+struct syskit_fd;
 struct syskit_evt;
 
 enum syskit_fd_event {
@@ -20,15 +21,20 @@ struct syskit_loop *syskit_loop_create();
 int syskit_loop_add(struct syskit_loop *loop,
 		    int fd,
 		    syskit_fd_event_cb cb,
-		    uint32_t events);
+		    uint32_t events,
+		    void *userdata);
 
 int syskit_loop_remove(struct syskit_loop *loop, int fd);
 
+struct syskit_fd *syskit_loop_find_fd(struct syskit_loop *loop, int fd);
+
 int syskit_loop_spin(struct syskit_loop *loop);
 
-void syskit_loop_display_registered_fds(struct syskit_loop *loop);
-
 void syskit_loop_destroy(struct syskit_loop *loop);
+
+void syskit_loop_wakeup(struct syskit_loop *loop);
+
+void syskit_loop_display_registered_fds(struct syskit_loop *loop);
 
 /* event public API */
 
