@@ -1,16 +1,14 @@
-#include <syskit.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <syskit.hpp>
 #include <signal.h>
 
 int running = 1;
-struct syskit_loop *loop;
+SyskitLoop *loop;
 
-void sig_handler(int signum)
+void sighandler(int signum)
 {
-	if (loop)
-		syskit_loop_wakeup(loop);
 	running = 0;
+	if (loop != nullptr)
+		loop->wakeup();
 }
 
 void callback(int fd, uint32_t revents, void *userdata)
@@ -20,15 +18,16 @@ void callback(int fd, uint32_t revents, void *userdata)
 	LOGD("Inside %s, events: %d, %s", __func__, revents, buf);
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
 	/* exit on SIGINT & SIGTERM */
-	signal(SIGINT, &sig_handler);
-	signal(SIGTERM, &sig_handler);
+	signal(SIGINT, &sighandler);
+	signal(SIGTERM, &sighandler);
 
 	/* ignore SIGPIPE */
 	signal(SIGPIPE, SIG_IGN);
-	loop = syskit_loop_create();
+
+	loop = new SyskitLoop();
 
 	int fd = STDIN_FILENO;
 
@@ -37,14 +36,16 @@ int main(int argc, char *argv[])
 		return -errno;
 	}
 
-	syskit_loop_add(loop, fd, callback, SYSKIT_FD_EVENT_IN, NULL);
+	loop->add(fd, callback, SYSKIT_FD_EVENT_IN, nullptr);
+
+	struct syskit_fd *loop_fd = loop->findFd(fd);
 
 	while (running) {
-		syskit_loop_spin(loop);
+		loop->spin();
 	}
 
 	close(fd);
-	syskit_loop_destroy(loop);
+	delete loop;
 
 	return 0;
 }

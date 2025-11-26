@@ -1,5 +1,9 @@
 #include <priv.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct syskit_loop;
 struct syskit_fd;
 struct syskit_evt;
@@ -41,3 +45,7 @@ void syskit_loop_display_registered_fds(struct syskit_loop *loop);
 struct syskit_evt *syskit_evt_create();
 
 void syskit_evt_destroy(struct syskit_evt *evt);
+
+#ifdef __cplusplus
+}
+#endif
