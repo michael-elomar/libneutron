@@ -1,8 +1,8 @@
-#include <syskit.hpp>
+#include <neutron.hpp>
 #include <signal.h>
 
 int running = 1;
-SyskitLoop *loop;
+NeutronLoop *loop;
 
 void sighandler(int signum)
 {
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 	/* ignore SIGPIPE */
 	signal(SIGPIPE, SIG_IGN);
 
-	loop = new SyskitLoop();
+	loop = new NeutronLoop();
 
 	int fd = STDIN_FILENO;
 
@@ -36,9 +36,9 @@ int main(int argc, char **argv)
 		return -errno;
 	}
 
-	loop->add(fd, callback, SYSKIT_FD_EVENT_IN, nullptr);
+	loop->add(fd, callback, NEUTRON_FD_EVENT_IN, nullptr);
 
-	struct syskit_fd *loop_fd = loop->findFd(fd);
+	struct neutron_fd *loop_fd = loop->findFd(fd);
 
 	while (running) {
 		loop->spin();

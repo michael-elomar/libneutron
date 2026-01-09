@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(syskit LANGUAGES C CXX)
+project(neutron LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -28,6 +28,10 @@ add_executable(test_loop examples/test_loop.c)
 target_link_libraries(test_loop ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 
+
+add_executable(test_thread examples/test_thread.c)
+target_link_libraries(test_thread ${PROJECT_NAME} pthread rt)
+target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 
 add_executable(test_loop_cpp examples/test_loop.cpp)
 target_link_libraries(test_loop_cpp ${PROJECT_NAME})

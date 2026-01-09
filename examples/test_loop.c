@@ -1,15 +1,15 @@
-#include <syskit.h>
+#include <neutron.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 
 int running = 1;
-struct syskit_loop *loop;
+struct neutron_loop *loop;
 
 void sig_handler(int signum)
 {
 	if (loop)
-		syskit_loop_wakeup(loop);
+		neutron_loop_wakeup(loop);
 	running = 0;
 }
 
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
 	/* ignore SIGPIPE */
 	signal(SIGPIPE, SIG_IGN);
-	loop = syskit_loop_create();
+	loop = neutron_loop_create();
 
 	int fd = STDIN_FILENO;
 
@@ -37,14 +37,14 @@ int main(int argc, char *argv[])
 		return -errno;
 	}
 
-	syskit_loop_add(loop, fd, callback, SYSKIT_FD_EVENT_IN, NULL);
+	neutron_loop_add(loop, fd, callback, NEUTRON_FD_EVENT_IN, NULL);
 
 	while (running) {
-		syskit_loop_spin(loop);
+		neutron_loop_spin(loop);
 	}
 
 	close(fd);
-	syskit_loop_destroy(loop);
+	neutron_loop_destroy(loop);
 
 	return 0;
 }
