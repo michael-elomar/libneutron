@@ -1,22 +1,22 @@
 #ifndef _LOOP_H_
 #define _LOOP_H_
 
-#include <syskit.h>
+#include <neutron.h>
 
 #define LOOP_WAKEUP_MAGIC 0x35
 #define MAX_EVENTS 16
 
-struct syskit_fd {
+struct neutron_fd {
 	intptr_t fd;
 	uint32_t events;
 	void *userdata;
-	syskit_fd_event_cb cb;
+	neutron_fd_event_cb cb;
 
-	struct syskit_fd *next;
+	struct neutron_fd *next;
 };
 
-struct syskit_loop {
-	struct syskit_fd *sfd; /* Linked list of FDs tracked by the loop */
+struct neutron_loop {
+	struct neutron_fd *nfd; /* Linked list of FDs tracked by the loop */
 	intptr_t number_fds;
 
 	uint32_t flags;

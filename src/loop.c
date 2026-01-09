@@ -1,46 +1,46 @@
 #include <loop.h>
 #include <priv.h>
 
-static inline uint32_t syskit_events_to_epoll(uint32_t syskit_event)
+static inline uint32_t neutron_events_to_epoll(uint32_t neutron_event)
 {
 	uint32_t epoll_flag = 0;
-	if (syskit_event & SYSKIT_FD_EVENT_IN)
+	if (neutron_event & NEUTRON_FD_EVENT_IN)
 		epoll_flag |= EPOLLIN;
-	if (syskit_event & SYSKIT_FD_EVENT_ERROR)
+	if (neutron_event & NEUTRON_FD_EVENT_ERROR)
 		epoll_flag |= EPOLLERR;
-	if (syskit_event & SYSKIT_FD_EVENT_HUP)
+	if (neutron_event & NEUTRON_FD_EVENT_HUP)
 		epoll_flag |= EPOLLHUP;
-	if (syskit_event & SYSKIT_FD_EVENT_OUT)
+	if (neutron_event & NEUTRON_FD_EVENT_OUT)
 		epoll_flag |= EPOLLOUT;
-	if (syskit_event & SYSKIT_FD_EVENT_PRI)
+	if (neutron_event & NEUTRON_FD_EVENT_PRI)
 		epoll_flag |= EPOLLPRI;
 
 	return epoll_flag;
 }
 
-static inline uint32_t syskit_events_from_epoll(uint32_t epoll_event)
+static inline uint32_t neutron_events_from_epoll(uint32_t epoll_event)
 {
-	uint32_t syskit_flag = 0;
+	uint32_t neutron_flag = 0;
 	if (epoll_event & EPOLLIN)
-		syskit_flag |= SYSKIT_FD_EVENT_IN;
+		neutron_flag |= NEUTRON_FD_EVENT_IN;
 	if (epoll_event & EPOLLOUT)
-		syskit_flag |= SYSKIT_FD_EVENT_OUT;
+		neutron_flag |= NEUTRON_FD_EVENT_OUT;
 	if (epoll_event & EPOLLERR)
-		syskit_flag |= SYSKIT_FD_EVENT_ERROR;
+		neutron_flag |= NEUTRON_FD_EVENT_ERROR;
 	if (epoll_event & EPOLLHUP)
-		syskit_flag |= SYSKIT_FD_EVENT_HUP;
+		neutron_flag |= NEUTRON_FD_EVENT_HUP;
 	if (epoll_event & EPOLLPRI)
-		syskit_flag |= SYSKIT_FD_EVENT_PRI;
+		neutron_flag |= NEUTRON_FD_EVENT_PRI;
 
-	return syskit_flag;
+	return neutron_flag;
 }
 
-static inline void syskit_loop_register_fd(struct syskit_loop *loop,
-					   struct syskit_fd *sysfd);
+static inline void neutron_loop_register_fd(struct neutron_loop *loop,
+					    struct neutron_fd *fd);
 
-struct syskit_loop *syskit_loop_create()
+struct neutron_loop *neutron_loop_create()
 {
-	struct syskit_loop *loop = calloc(1, sizeof(struct syskit_loop));
+	struct neutron_loop *loop = calloc(1, sizeof(struct neutron_loop));
 	if (!loop) {
 		LOG_ERRNO("cannot create loop");
 		goto error;
@@ -84,11 +84,11 @@ error:
 	return NULL;
 }
 
-int syskit_loop_add(struct syskit_loop *loop,
-		    int fd,
-		    syskit_fd_event_cb cb,
-		    uint32_t events,
-		    void *userdata)
+int neutron_loop_add(struct neutron_loop *loop,
+		     int fd,
+		     neutron_fd_event_cb cb,
+		     uint32_t events,
+		     void *userdata)
 {
 	int ret = 0;
 
@@ -99,7 +99,7 @@ int syskit_loop_add(struct syskit_loop *loop,
 		return errno;
 	}
 	event->data.fd = fd;
-	event->events = syskit_events_to_epoll(events);
+	event->events = neutron_events_to_epoll(events);
 
 	ret = epoll_ctl(loop->efd, EPOLL_CTL_ADD, fd, event);
 	if (ret < 0) {
@@ -108,30 +108,30 @@ int syskit_loop_add(struct syskit_loop *loop,
 	}
 	free(event);
 
-	struct syskit_fd *sysfd = calloc(1, sizeof(struct syskit_fd));
-	if (!sysfd) {
+	struct neutron_fd *nfd = calloc(1, sizeof(struct neutron_fd));
+	if (!nfd) {
 		LOG_ERRNO("cannot allocate memory for syskit_fd instance");
-		free(sysfd);
+		free(nfd);
 		return errno;
 	}
-	sysfd->fd = fd;
-	sysfd->events = events;
-	sysfd->userdata = userdata;
-	sysfd->cb = cb;
+	nfd->fd = fd;
+	nfd->events = events;
+	nfd->userdata = userdata;
+	nfd->cb = cb;
 
-	syskit_loop_register_fd(loop, sysfd);
+	neutron_loop_register_fd(loop, nfd);
 
 	return 0;
 }
 
-int syskit_loop_remove(struct syskit_loop *loop, int fd)
+int neutron_loop_remove(struct neutron_loop *loop, int fd)
 {
-	struct syskit_fd *head = loop->sfd;
-	struct syskit_fd *to_remove = NULL;
+	struct neutron_fd *head = loop->nfd;
+	struct neutron_fd *to_remove = NULL;
 
 	/* in case the fd to remove is the head of the list */
 	if (head->fd == fd) {
-		loop->sfd = loop->sfd->next;
+		loop->nfd = loop->nfd->next;
 		to_remove = head;
 	} else {
 		while (head->next) {
@@ -162,15 +162,15 @@ int syskit_loop_remove(struct syskit_loop *loop, int fd)
 	return 0;
 }
 
-struct syskit_fd *syskit_loop_find_fd(struct syskit_loop *loop, int fd)
+struct neutron_fd *neutron_loop_find_fd(struct neutron_loop *loop, int fd)
 {
-	struct syskit_fd *head = loop->sfd;
+	struct neutron_fd *head = loop->nfd;
 	while (head && head->fd != fd)
 		head = head->next;
 	return head;
 }
 
-int syskit_loop_spin(struct syskit_loop *loop)
+int neutron_loop_spin(struct neutron_loop *loop)
 {
 	int ret = 0;
 	struct epoll_event events[16];
@@ -191,7 +191,7 @@ int syskit_loop_spin(struct syskit_loop *loop)
 
 	nevents = ret;
 	for (uint32_t i = 0; i < nevents; i++) {
-		uint32_t revents = syskit_events_from_epoll(events[i].events);
+		uint32_t revents = neutron_events_from_epoll(events[i].events);
 		if (revents == 0)
 			continue;
 
@@ -201,19 +201,19 @@ int syskit_loop_spin(struct syskit_loop *loop)
 			continue;
 		}
 
-		struct syskit_fd *sfd =
-			syskit_loop_find_fd(loop, events[i].data.fd);
+		struct neutron_fd *nfd =
+			neutron_loop_find_fd(loop, events[i].data.fd);
 
-		if (sfd != NULL && sfd->cb != NULL)
-			(*sfd->cb)(sfd->fd, sfd->events, NULL);
+		if (nfd != NULL && nfd->cb != NULL)
+			(*nfd->cb)(nfd->fd, nfd->events, nfd->userdata);
 	}
 	return 0;
 }
 
-void syskit_loop_destroy(struct syskit_loop *loop)
+void neutron_loop_destroy(struct neutron_loop *loop)
 {
-	struct syskit_fd *head = loop->sfd;
-	struct syskit_fd *aux;
+	struct neutron_fd *head = loop->nfd;
+	struct neutron_fd *aux;
 	while (head) {
 		aux = head;
 		head = head->next;
@@ -223,7 +223,7 @@ void syskit_loop_destroy(struct syskit_loop *loop)
 	loop = NULL;
 }
 
-void syskit_loop_wakeup(struct syskit_loop *loop)
+void neutron_loop_wakeup(struct neutron_loop *loop)
 {
 	uint64_t value = LOOP_WAKEUP_MAGIC;
 	int ret = write(loop->wakeup_fd, &value, sizeof(uint64_t));
@@ -232,25 +232,25 @@ void syskit_loop_wakeup(struct syskit_loop *loop)
 	}
 }
 
-void syskit_loop_display_registered_fds(struct syskit_loop *loop)
+void neutron_loop_display_registered_fds(struct neutron_loop *loop)
 {
-	struct syskit_fd *head = loop->sfd;
+	struct neutron_fd *head = loop->nfd;
 	while (head) {
 		LOGI("fd: %ld", head->fd);
 		head = head->next;
 	}
 }
 
-static inline void syskit_loop_register_fd(struct syskit_loop *loop,
-					   struct syskit_fd *sysfd)
+static inline void neutron_loop_register_fd(struct neutron_loop *loop,
+					    struct neutron_fd *fd)
 {
 	if (loop->number_fds == 0)
-		loop->sfd = sysfd;
+		loop->nfd = fd;
 	else {
-		struct syskit_fd *head = loop->sfd;
+		struct neutron_fd *head = loop->nfd;
 		while (head->next)
 			head = head->next;
-		head->next = sysfd;
+		head->next = fd;
 	}
 	loop->number_fds++;
 }
