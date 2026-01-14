@@ -134,6 +134,36 @@ cleanup:
 	return storage;
 }
 
+int neutron_node_listen(struct neutron_node *node)
+{
+	int ret, opt = 1;
+	ret = setsockopt(node->socket.fd,
+			 SOL_SOCKET,
+			 SO_REUSEADDR | SO_REUSEPORT,
+			 &opt,
+			 sizeof(opt));
+	if (ret) {
+		LOG_ERRNO("Failed to setsockopt");
+		return ret;
+	}
+
+	ret = bind(node->socket.fd,
+		   (struct sockaddr *)node->socket.local_addr,
+		   node->socket.local_addrlen);
+	if (ret) {
+		LOG_ERRNO("Failed to bind socket");
+		return ret;
+	}
+
+	ret = listen(node->socket.fd, MAX_SERVER_CONNECTIONS);
+	if (ret) {
+		LOG_ERRNO("Failed to start listening");
+		return ret;
+	}
+
+	return 0;
+}
+
 void neutron_node_destroy(struct neutron_node *node)
 {
 	if (node) {
@@ -141,6 +171,10 @@ void neutron_node_destroy(struct neutron_node *node)
 			free(node->socket.local_addr);
 			node->socket.local_addr = NULL;
 		}
+
+		if (node->socket.fd > 0)
+			close(node->socket.fd);
+
 		node->socket.fd = 0;
 		node->socket.local_addrlen = 0;
 
