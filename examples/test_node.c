@@ -6,7 +6,7 @@
 
 int running = 1;
 struct neutron_loop *loop;
-struct neutron_node *node;
+struct neutron_node *node, *node2;
 
 void sig_handler(int signum)
 {
@@ -31,19 +31,14 @@ int main(int argc, char *argv[])
 	/* ignore SIGPIPE */
 	signal(SIGPIPE, SIG_IGN);
 	loop = neutron_loop_create();
-	node = neutron_node_create_with_loop(loop);
-
-	neutron_node_parse_address("unix:@topic");
-	neutron_node_parse_address("inet:127.0.0.1:8080");
-
-	struct sockaddr_in addr = {
-		.sin_family = AF_UNIX,
-	};
+	node = neutron_node_create_with_loop(loop, "inet:127.0.0.1:8080");
+	node2 = neutron_node_create("unix:@topic");
 
 	while (running) {
 		neutron_loop_spin(loop);
 	}
 
+	neutron_node_destroy(node2);
 	neutron_node_destroy(node);
 	neutron_loop_destroy(loop);
 

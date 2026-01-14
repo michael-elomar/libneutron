@@ -2,14 +2,17 @@
 #define _NODE_H_
 
 #include <neutron.h>
+
 struct neutron_node {
 	struct neutron_loop *loop;
 
 	struct {
 		int fd;
-		struct sockaddr_storage local_addr;
+		struct sockaddr_storage *local_addr;
 		socklen_t local_addrlen;
 	} socket;
+
+	int destroy_loop;
 
 	neutron_socket_fd_cb socket_fd_cb;
 };
