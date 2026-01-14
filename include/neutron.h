@@ -27,6 +27,8 @@ enum neutron_node_type {
 
 typedef void (*neutron_fd_event_cb)(int fd, uint32_t revents, void *userdata);
 
+typedef void (*neutron_socket_fd_cb)(int fd, void *userdata);
+
 /* loop public API */
 
 struct neutron_loop *neutron_loop_create();
@@ -54,6 +56,8 @@ void neutron_loop_display_registered_fds(struct neutron_loop *loop);
 struct neutron_node *neutron_node_create();
 
 struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop);
+
+struct sockaddr_storage *neutron_node_parse_address(char *address);
 
 void neutron_node_destroy(struct neutron_node *node);
 
