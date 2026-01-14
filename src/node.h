@@ -3,6 +3,8 @@
 
 #include <neutron.h>
 
+#define MAX_SERVER_CONNECTIONS 16
+
 struct neutron_node {
 	struct neutron_loop *loop;
 
