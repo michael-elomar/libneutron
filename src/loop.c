@@ -219,8 +219,10 @@ void neutron_loop_destroy(struct neutron_loop *loop)
 		head = head->next;
 		free(aux);
 	}
-	free(loop);
-	loop = NULL;
+	if (loop) {
+		free(loop);
+		loop = NULL;
+	}
 }
 
 void neutron_loop_wakeup(struct neutron_loop *loop)

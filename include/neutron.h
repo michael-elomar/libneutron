@@ -53,11 +53,14 @@ void neutron_loop_display_registered_fds(struct neutron_loop *loop);
 
 /* node public API */
 
-struct neutron_node *neutron_node_create();
+struct neutron_node *neutron_node_create(char *address);
 
-struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop);
+struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop,
+						   char *address);
 
 struct sockaddr_storage *neutron_node_parse_address(char *address);
+
+int neutron_node_listen(struct neutron_node *node);
 
 void neutron_node_destroy(struct neutron_node *node);
 
