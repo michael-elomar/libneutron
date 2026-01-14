@@ -4,3 +4,7 @@
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <string.h>
