@@ -31,7 +31,9 @@ int main(int argc, char *argv[])
 	/* ignore SIGPIPE */
 	signal(SIGPIPE, SIG_IGN);
 	loop = neutron_loop_create();
-	node = neutron_node_create_with_loop(loop, "inet:127.0.0.1:8080");
+	node = neutron_node_create_with_loop(loop, "inet:127.0.0.1:8080", NULL);
+
+	neutron_node_listen(node);
 
 	while (running) {
 		neutron_loop_spin(loop);
