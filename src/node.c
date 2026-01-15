@@ -2,8 +2,52 @@
 #include <node.h>
 #include <loop.h>
 
+static void conn_accepted_cb(int fd, uint32_t revents, void *userdata)
+{
+	ssize_t readlen = 0;
+	struct neutron_node *node = (struct neutron_node *)userdata;
+
+	// TODO: spawn connection object and have it read from the connection
+	// file descriptor and keep track of all connection objects in a list
+}
+
+static int node_accept_conn(int server_fd, struct neutron_node *node)
+{
+	int ret = 0, conn_fd = -1;
+
+	conn_fd = accept(server_fd,
+			 (struct sockaddr *)node->socket.local_addr,
+			 &node->socket.local_addrlen);
+
+	if (conn_fd < 0) {
+		ret = errno;
+		LOG_ERRNO("Failed to accept connection");
+		goto cleanup;
+	}
+
+	ret = neutron_loop_add(node->loop,
+			       conn_fd,
+			       conn_accepted_cb,
+			       NEUTRON_FD_EVENT_IN,
+			       node);
+
+	if (ret) {
+		LOG_ERRNO("Failed to add connection fd to event loop");
+		goto cleanup;
+	}
+
+	return 0;
+
+cleanup:
+	if (conn_fd > 0)
+		close(conn_fd);
+
+	return ret;
+}
+
 struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop,
-						   char *address)
+						   char *address,
+						   void *userdata)
 {
 	if (!address) {
 		LOGE("Must provide an address to the node");
@@ -31,6 +75,11 @@ struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop,
 		goto cleanup;
 	}
 
+	node->userdata = userdata;
+
+	if (node->socket_fd_cb)
+		(*node->socket_fd_cb)(node->socket.fd, node->userdata);
+
 	node->destroy_loop = 0;
 	return node;
 
@@ -39,7 +88,7 @@ cleanup:
 	return NULL;
 }
 
-struct neutron_node *neutron_node_create(char *address)
+struct neutron_node *neutron_node_create(char *address, void *userdata)
 {
 	if (!address) {
 		LOGE("Must provide an address to the node");
@@ -54,7 +103,7 @@ struct neutron_node *neutron_node_create(char *address)
 	}
 
 	struct neutron_node *node =
-		neutron_node_create_with_loop(loop, address);
+		neutron_node_create_with_loop(loop, address, userdata);
 
 	if (!node) {
 		LOGE("Failed to create neutron_node");
@@ -161,7 +210,27 @@ int neutron_node_listen(struct neutron_node *node)
 		return ret;
 	}
 
+	ret = neutron_loop_add(node->loop,
+			       node->socket.fd,
+			       listen_cb,
+			       NEUTRON_FD_EVENT_IN,
+			       (void *)node);
+
+	if (ret) {
+		LOG_ERRNO("Failed to register socket fd in event loop");
+		return ret;
+	}
+
+	node->type = NEUTRON_NODE_SERVER;
+
 	return 0;
+}
+
+void listen_cb(int server_fd, uint32_t revents, void *userdata)
+{
+	struct neutron_node *node = (struct neutron_node *)userdata;
+
+	node_accept_conn(server_fd, node);
 }
 
 void neutron_node_destroy(struct neutron_node *node)

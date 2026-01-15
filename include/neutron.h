@@ -29,6 +29,10 @@ typedef void (*neutron_fd_event_cb)(int fd, uint32_t revents, void *userdata);
 
 typedef void (*neutron_socket_fd_cb)(int fd, void *userdata);
 
+typedef void (*neutron_socket_event_cb)(uint32_t events, void *userdata);
+
+typedef void (*neutron_socket_data_cb)(int conn_fd, void *buf, uint32_t buflen);
+
 /* loop public API */
 
 struct neutron_loop *neutron_loop_create();
@@ -53,10 +57,11 @@ void neutron_loop_display_registered_fds(struct neutron_loop *loop);
 
 /* node public API */
 
-struct neutron_node *neutron_node_create(char *address);
+struct neutron_node *neutron_node_create(char *address, void *userdata);
 
 struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop,
-						   char *address);
+						   char *address,
+						   void *userdata);
 
 struct sockaddr_storage *neutron_node_parse_address(char *address);
 
