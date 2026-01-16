@@ -15,11 +15,10 @@ void sig_handler(int signum)
 	running = 0;
 }
 
-void callback(int fd, uint32_t revents, void *userdata)
+void callback(int conn_fd, void *buf, uint32_t buflen)
 {
-	uint8_t buf[128];
-	read(fd, buf, 128);
-	LOGD("Inside %s, events: %d, %s", __func__, revents, buf);
+	LOGD("Inside %s, fd: %d, %s", __func__, conn_fd, buf);
+	send(conn_fd, buf, buflen, 0);
 }
 
 int main(int argc, char *argv[])
@@ -34,6 +33,7 @@ int main(int argc, char *argv[])
 	node = neutron_node_create_with_loop(loop, "inet:127.0.0.1:8080", NULL);
 
 	neutron_node_listen(node);
+	neutron_node_set_socket_data_cb(node, callback);
 
 	while (running) {
 		neutron_loop_spin(loop);

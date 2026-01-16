@@ -2,13 +2,53 @@
 #include <node.h>
 #include <loop.h>
 
+static void neutron_node_add_conn(struct neutron_node *node,
+				  struct neutron_conn *conn)
+{
+	if (!node->head) {
+		node->head = conn;
+		return;
+	}
+
+	struct neutron_conn *aux = node->head;
+	while (aux->next)
+		aux = aux->next;
+
+	aux->next = conn;
+}
+static void conn_process_write(struct neutron_node *node,
+			       struct neutron_conn *conn)
+{
+	/* TODO */
+}
+
+static void conn_process_read(struct neutron_node *node,
+			      struct neutron_conn *conn)
+{
+	do {
+		conn->readbuf.datalen = read(
+			conn->fd, conn->readbuf.data, conn->readbuf.capacity);
+	} while (conn->readbuf.datalen < 0 && errno != EINTR);
+
+	if (node->socket_data_cb) {
+		(*node->socket_data_cb)(
+			conn->fd, conn->readbuf.data, conn->readbuf.datalen);
+	}
+
+	conn->remove = 1;
+}
+
 static void conn_accepted_cb(int fd, uint32_t revents, void *userdata)
 {
-	ssize_t readlen = 0;
 	struct neutron_node *node = (struct neutron_node *)userdata;
+	struct neutron_conn *conn = neutron_node_find_connection(node, fd);
 
-	// TODO: spawn connection object and have it read from the connection
-	// file descriptor and keep track of all connection objects in a list
+	if (!conn->remove && (revents & NEUTRON_FD_EVENT_IN))
+		conn_process_read(node, conn);
+	else if (!conn->remove && (revents & NEUTRON_FD_EVENT_OUT))
+		conn_process_write(node, conn);
+	else if (conn->remove || NEUTRON_FD_EVENT_ERROR)
+		neutron_node_remove_conn(node, conn);
 }
 
 static int node_accept_conn(int server_fd, struct neutron_node *node)
@@ -24,6 +64,10 @@ static int node_accept_conn(int server_fd, struct neutron_node *node)
 		LOG_ERRNO("Failed to accept connection");
 		goto cleanup;
 	}
+
+	struct neutron_conn *conn = neutron_conn_new(512);
+	conn->fd = conn_fd;
+	neutron_node_add_conn(node, conn);
 
 	ret = neutron_loop_add(node->loop,
 			       conn_fd,
@@ -43,6 +87,50 @@ cleanup:
 		close(conn_fd);
 
 	return ret;
+}
+
+struct neutron_conn *neutron_conn_new(int capacity)
+{
+	struct neutron_conn *conn = NULL;
+
+	conn = (struct neutron_conn *)calloc(1, sizeof(struct neutron_conn));
+	if (!conn) {
+		LOG_ERRNO("Failed to allocate memory for conn");
+		return NULL;
+	}
+
+	conn->readbuf.data = (uint8_t *)malloc(capacity);
+	if (!conn->readbuf.data) {
+		LOG_ERRNO("Failed to allocate memory for readbuf in conn");
+		free(conn);
+		conn = NULL;
+		return NULL;
+	}
+
+	conn->readbuf.capacity = capacity;
+	conn->remove = 0;
+	conn->fd = -1;
+
+	return conn;
+}
+
+void neutron_conn_destroy(struct neutron_conn *conn)
+{
+	if (conn) {
+		if (conn->readbuf.data)
+			free(conn->readbuf.data);
+
+		if (conn->fd > 0)
+			close(conn->fd);
+
+		conn->fd = -1;
+		conn->readbuf.data = NULL;
+		conn->readbuf.capacity = 0;
+		conn->readbuf.datalen = 0;
+
+		free(conn);
+		conn = NULL;
+	}
 }
 
 struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop,
@@ -183,6 +271,49 @@ cleanup:
 	return storage;
 }
 
+int neutron_node_set_socket_data_cb(struct neutron_node *node,
+				    neutron_socket_data_cb cb)
+{
+	if (!node || !cb)
+		return EINVAL;
+
+	node->socket_data_cb = cb;
+	return 0;
+}
+
+int neutron_node_set_socket_fd_cb(struct neutron_node *node,
+				  neutron_socket_fd_cb cb)
+{
+	if (!node || !cb)
+		return EINVAL;
+
+	node->socket_fd_cb = cb;
+	return 0;
+}
+
+int neutron_node_set_socket_event_cb(struct neutron_node *node,
+				     neutron_socket_event_cb cb)
+{
+	if (!node || !cb)
+		return EINVAL;
+
+	node->socket_event_cb = cb;
+	return 0;
+}
+
+struct neutron_conn *neutron_node_find_connection(struct neutron_node *node,
+						  int fd)
+{
+	if (node->head->fd == fd)
+		return node->head;
+
+	struct neutron_conn *aux = node->head;
+	while (aux->next && aux->next->fd != fd)
+		aux = aux->next;
+
+	return aux->next;
+}
+
 int neutron_node_listen(struct neutron_node *node)
 {
 	int ret, opt = 1;
@@ -228,9 +359,50 @@ int neutron_node_listen(struct neutron_node *node)
 
 void listen_cb(int server_fd, uint32_t revents, void *userdata)
 {
-	struct neutron_node *node = (struct neutron_node *)userdata;
+	node_accept_conn(server_fd, userdata);
+}
 
-	node_accept_conn(server_fd, node);
+int neutron_node_connect(struct neutron_node *node)
+{
+	// TODO
+	return 0;
+}
+
+int neutron_node_remove_conn(struct neutron_node *node,
+			     struct neutron_conn *conn)
+{
+	int ret = 0;
+	uint8_t found = 0;
+
+	struct neutron_conn *aux = node->head;
+	if (aux == conn) {
+		found = 1;
+		node->head = node->head->next;
+		ret = neutron_loop_remove(node->loop, conn->fd);
+		if (ret) {
+			LOG_ERRNO("Failed to remove connection fd from loop");
+			return ret;
+		}
+		neutron_conn_destroy(conn);
+	} else {
+		while (aux->next && aux->next != conn)
+			aux = aux->next;
+		if (aux->next == conn) {
+			found = 1;
+			aux->next = aux->next->next;
+			ret = neutron_loop_remove(node->loop, conn->fd);
+			if (ret) {
+				LOG_ERRNO(
+					"Failed to remove connection fd from loop");
+				return ret;
+			}
+			neutron_conn_destroy(conn);
+		} else {
+			LOGE("Failed to find conn in node");
+			return EINVAL;
+		}
+	}
+	return 0;
 }
 
 void neutron_node_destroy(struct neutron_node *node)
@@ -246,6 +418,14 @@ void neutron_node_destroy(struct neutron_node *node)
 
 		node->socket.fd = 0;
 		node->socket.local_addrlen = 0;
+
+		/* clear linked list */
+		struct neutron_conn *aux = node->head;
+		if (node->head) {
+			struct neutron_conn *aux = node->head;
+			node->head = node->head->next;
+			neutron_conn_destroy(aux);
+		}
 
 		if (node->destroy_loop)
 			neutron_loop_destroy(node->loop);

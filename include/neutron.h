@@ -65,7 +65,18 @@ struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop,
 
 struct sockaddr_storage *neutron_node_parse_address(char *address);
 
+int neutron_node_set_socket_data_cb(struct neutron_node *node,
+				    neutron_socket_data_cb cb);
+
+int neutron_node_set_socket_fd_cb(struct neutron_node *node,
+				  neutron_socket_fd_cb cb);
+
+int neutron_node_set_socket_event_cb(struct neutron_node *node,
+				     neutron_socket_event_cb cb);
+
 int neutron_node_listen(struct neutron_node *node);
+
+int neutron_node_connect(struct neutron_node *node);
 
 void neutron_node_destroy(struct neutron_node *node);
 
