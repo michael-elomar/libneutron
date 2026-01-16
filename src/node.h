@@ -12,8 +12,16 @@ struct neutron_conn {
 		size_t capacity;
 	} readbuf;
 
+	int fd;
+
+	uint8_t remove;
+
 	struct neutron_conn *next;
 };
+
+struct neutron_conn *neutron_conn_new(int capacity);
+
+void neutron_conn_destroy(struct neutron_conn *conn);
 
 struct neutron_node {
 	struct neutron_loop *loop;
@@ -38,6 +46,12 @@ struct neutron_node {
 
 	struct neutron_conn *head;
 };
+
+struct neutron_conn *neutron_node_find_connection(struct neutron_node *node,
+						  int fd);
+
+int neutron_node_remove_conn(struct neutron_node *node,
+			     struct neutron_conn *conn);
 
 void listen_cb(int server_fd, uint32_t revents, void *userdata);
 
