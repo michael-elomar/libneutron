@@ -36,3 +36,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 add_executable(test_node examples/test_node.c)
 target_link_libraries(test_node ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
+
+add_executable(test_node_client examples/test_node_client.c)
+target_link_libraries(test_node_client ${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
