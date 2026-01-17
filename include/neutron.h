@@ -78,6 +78,8 @@ int neutron_node_listen(struct neutron_node *node);
 
 int neutron_node_connect(struct neutron_node *node);
 
+int neutron_node_send(struct neutron_node *node, uint8_t *buf, uint32_t buflen);
+
 void neutron_node_destroy(struct neutron_node *node);
 
 /* event public API */

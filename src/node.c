@@ -364,8 +364,25 @@ void listen_cb(int server_fd, uint32_t revents, void *userdata)
 
 int neutron_node_connect(struct neutron_node *node)
 {
-	// TODO
-	return 0;
+	int ret = 0;
+
+	ret = connect(node->socket.fd,
+		      (struct sockaddr *)node->socket.local_addr,
+		      node->socket.local_addrlen);
+	if (ret < 0) {
+		LOG_ERRNO("Failed to connect node to server");
+		return errno;
+	}
+
+	node->type = NEUTRON_NODE_CLIENT;
+
+	return ret;
+}
+
+int neutron_node_send(struct neutron_node *node, uint8_t *buf, uint32_t buflen)
+{
+	int len = send(node->socket.fd, buf, buflen, 0);
+	return len > 0 ? 0 : errno;
 }
 
 int neutron_node_remove_conn(struct neutron_node *node,

@@ -32,12 +32,8 @@ int main(int argc, char *argv[])
 	loop = neutron_loop_create();
 	node = neutron_node_create_with_loop(loop, "inet:127.0.0.1:8080", NULL);
 
-	neutron_node_listen(node);
-	neutron_node_set_socket_data_cb(node, callback);
-
-	while (running) {
-		neutron_loop_spin(loop);
-	}
+	neutron_node_connect(node);
+	neutron_node_send(node, (uint8_t *)"test_node_client", 18);
 
 	neutron_node_destroy(node);
 	neutron_loop_destroy(loop);
