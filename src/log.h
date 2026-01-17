@@ -34,3 +34,5 @@
 	     __LINE__, \
 	     errno, \
 	     strerror(errno))
+
+#define VLOGE(_func) LOGE("%s - %s:%d", _func, __func__, __LINE__)

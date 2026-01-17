@@ -10,7 +10,8 @@ extern "C" {
 struct neutron_loop;
 struct neutron_fd;
 struct neutron_evt;
-struct neutron_node;
+struct neutron_ctx;
+struct neutron_conn;
 
 enum neutron_fd_event {
 	NEUTRON_FD_EVENT_IN = 0x001,
@@ -20,18 +21,27 @@ enum neutron_fd_event {
 	NEUTRON_FD_EVENT_HUP = 0x010,
 };
 
-enum neutron_node_type {
-	NEUTRON_NODE_SERVER = 0,
-	NEUTRON_NODE_CLIENT,
+enum neutron_ctx_type {
+	NEUTRON_SERVER = 0,
+	NEUTRON_CLIENT,
+};
+
+enum neutron_event {
+	NEUTRON_EVENT_CONNECTED = 0,
+	NEUTRON_EVENT_DISCONNECTED,
+	NEUTRON_EVENT_DATA,
 };
 
 typedef void (*neutron_fd_event_cb)(int fd, uint32_t revents, void *userdata);
 
-typedef void (*neutron_socket_fd_cb)(int fd, void *userdata);
+typedef void (*neutron_ctx_fd_cb)(int fd, void *userdata);
 
-typedef void (*neutron_socket_event_cb)(uint32_t events, void *userdata);
+typedef void (*neutron_ctx_event_cb)(struct neutron_ctx *ctx,
+				     enum neutron_event event,
+				     struct neutron_conn *conn,
+				     void *userdata);
 
-typedef void (*neutron_socket_data_cb)(int conn_fd, void *buf, uint32_t buflen);
+typedef void (*neutron_ctx_data_cb)(int conn_fd, void *buf, uint32_t buflen);
 
 /* loop public API */
 
@@ -57,30 +67,35 @@ void neutron_loop_display_registered_fds(struct neutron_loop *loop);
 
 /* node public API */
 
-struct neutron_node *neutron_node_create(char *address, void *userdata);
+struct neutron_ctx *neutron_ctx_create(neutron_ctx_event_cb cb, void *userdata);
 
-struct neutron_node *neutron_node_create_with_loop(struct neutron_loop *loop,
-						   char *address,
-						   void *userdata);
+struct neutron_ctx *neutron_ctx_create_with_loop(neutron_ctx_event_cb cb,
+						 struct neutron_loop *loop,
+						 void *userdata);
 
-struct sockaddr_storage *neutron_node_parse_address(char *address);
+struct sockaddr_storage *neutron_ctx_parse_address(char *address);
 
-int neutron_node_set_socket_data_cb(struct neutron_node *node,
-				    neutron_socket_data_cb cb);
+int neutron_ctx_set_socket_data_cb(struct neutron_ctx *ctx,
+				   neutron_ctx_data_cb cb);
 
-int neutron_node_set_socket_fd_cb(struct neutron_node *node,
-				  neutron_socket_fd_cb cb);
+int neutron_ctx_set_socket_fd_cb(struct neutron_ctx *ctx, neutron_ctx_fd_cb cb);
 
-int neutron_node_set_socket_event_cb(struct neutron_node *node,
-				     neutron_socket_event_cb cb);
+int neutron_ctx_set_socket_event_cb(struct neutron_ctx *ctx,
+				    neutron_ctx_event_cb cb);
 
-int neutron_node_listen(struct neutron_node *node);
+int neutron_ctx_listen(struct neutron_ctx *ctx,
+		       struct sockaddr *addr,
+		       ssize_t addrlen);
 
-int neutron_node_connect(struct neutron_node *node);
+int neutron_ctx_connect(struct neutron_ctx *ctx,
+			struct sockaddr *addr,
+			ssize_t addrlen);
 
-int neutron_node_send(struct neutron_node *node, uint8_t *buf, uint32_t buflen);
+int neutron_ctx_disconnect(struct neutron_ctx *ctx);
 
-void neutron_node_destroy(struct neutron_node *node);
+int neutron_ctx_send(struct neutron_ctx *ctx, uint8_t *buf, uint32_t buflen);
+
+void neutron_ctx_destroy(struct neutron_ctx *ctx);
 
 /* event public API */
 

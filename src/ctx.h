@@ -23,36 +23,41 @@ struct neutron_conn *neutron_conn_new(int capacity);
 
 void neutron_conn_destroy(struct neutron_conn *conn);
 
-struct neutron_node {
+struct neutron_ctx {
 	struct neutron_loop *loop;
 
-	enum neutron_node_type type;
+	enum neutron_ctx_type type;
 
 	struct {
 		int fd;
-		struct sockaddr_storage *local_addr;
-		socklen_t local_addrlen;
+		struct sockaddr_storage *addr;
+		socklen_t addrlen;
 	} socket;
 
 	void *userdata;
 
 	int destroy_loop;
 
-	neutron_socket_fd_cb socket_fd_cb;
+	neutron_ctx_fd_cb fd_cb;
 
-	neutron_socket_event_cb socket_event_cb;
+	neutron_ctx_event_cb event_cb;
 
-	neutron_socket_data_cb socket_data_cb;
+	neutron_ctx_data_cb data_cb;
 
 	struct neutron_conn *head;
 };
 
-struct neutron_conn *neutron_node_find_connection(struct neutron_node *node,
-						  int fd);
+struct neutron_conn *neutron_ctx_find_connection(struct neutron_ctx *ctx,
+						 int fd);
 
-int neutron_node_remove_conn(struct neutron_node *node,
+int neutron_ctx_notify_event(struct neutron_ctx *ctx,
+			     enum neutron_event,
 			     struct neutron_conn *conn);
 
+int neutron_ctx_remove_conn(struct neutron_ctx *ctx, struct neutron_conn *conn);
+
 void listen_cb(int server_fd, uint32_t revents, void *userdata);
+
+void connect_cb(int conn_fd, uint32_t revents, void *userdata);
 
 #endif

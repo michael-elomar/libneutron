@@ -14,7 +14,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUT_DIR}/lib/)
 
 set(SRC_FILES
 	src/loop.c
-	src/node.c
+	src/ctx.c
 )
 
 set(INCLUDE
@@ -33,10 +33,7 @@ add_executable(test_loop_cpp examples/test_loop.cpp)
 target_link_libraries(test_loop_cpp ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 
-add_executable(test_node examples/test_node.c)
-target_link_libraries(test_node ${PROJECT_NAME})
+add_executable(test_ctx examples/test_node.c)
+target_link_libraries(test_ctx ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 
-add_executable(test_node_client examples/test_node_client.c)
-target_link_libraries(test_node_client ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
