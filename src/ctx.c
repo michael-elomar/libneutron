@@ -296,7 +296,7 @@ cleanup:
 	return NULL;
 }
 
-struct sockaddr_storage *neutron_ctx_parse_address(char *address)
+struct sockaddr_storage *neutron_ctx_parse_address(const char *address)
 {
 	if (strlen(address) > 64)
 		return NULL;

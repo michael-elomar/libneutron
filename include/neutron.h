@@ -72,7 +72,7 @@ void neutron_loop_wakeup(struct neutron_loop *loop);
 
 void neutron_loop_display_registered_fds(struct neutron_loop *loop);
 
-/* node public API */
+/* ctx public API */
 
 struct neutron_ctx *neutron_ctx_create(neutron_ctx_event_cb cb, void *userdata);
 
@@ -80,7 +80,7 @@ struct neutron_ctx *neutron_ctx_create_with_loop(neutron_ctx_event_cb cb,
 						 struct neutron_loop *loop,
 						 void *userdata);
 
-struct sockaddr_storage *neutron_ctx_parse_address(char *address);
+struct sockaddr_storage *neutron_ctx_parse_address(const char *address);
 
 int neutron_ctx_set_socket_data_cb(struct neutron_ctx *ctx,
 				   neutron_ctx_data_cb cb);
