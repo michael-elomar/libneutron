@@ -23,8 +23,8 @@ static void conn_process_write(struct neutron_ctx *ctx,
 	/* TODO */
 }
 
-static void conn_process_read(struct neutron_ctx *ctx,
-			      struct neutron_conn *conn)
+static void conn_process_read_stream(struct neutron_ctx *ctx,
+				     struct neutron_conn *conn)
 {
 	do {
 		conn->readbuf.datalen = read(
@@ -40,16 +40,57 @@ static void conn_process_read(struct neutron_ctx *ctx,
 		}
 
 		if (ctx->data_cb) {
-			(*ctx->data_cb)(conn->fd,
+			(*ctx->data_cb)(ctx,
+					conn,
 					conn->readbuf.data,
-					conn->readbuf.datalen);
+					conn->readbuf.datalen,
+					ctx->userdata);
 		}
 	} else {
 		conn->remove = 1;
 	}
 }
 
-static void conn_accepted_cb(int fd, uint32_t revents, void *userdata)
+static void conn_process_read_dgram(struct neutron_ctx *ctx,
+				    struct neutron_conn *conn)
+{
+	do {
+		conn->readbuf.datalen = recvfrom(conn->fd,
+						 conn->readbuf.data,
+						 conn->readbuf.capacity,
+						 0,
+						 (struct sockaddr *)&conn->peer,
+						 &conn->peer_addrlen);
+	} while (conn->readbuf.datalen < 0 && errno != EINTR);
+
+	if (conn->readbuf.datalen > 0) {
+		int ret =
+			neutron_ctx_notify_event(ctx, NEUTRON_EVENT_DATA, conn);
+		if (ret) {
+			LOG_ERRNO("Failed to notify udp msg event");
+			return;
+		}
+	}
+
+	if (ctx->data_cb) {
+		(*ctx->data_cb)(ctx,
+				conn,
+				conn->readbuf.data,
+				conn->readbuf.datalen,
+				ctx->userdata);
+	}
+}
+
+static void conn_process_read(struct neutron_ctx *ctx,
+			      struct neutron_conn *conn)
+{
+	if (ctx->type == NEUTRON_DGRAM)
+		conn_process_read_dgram(ctx, conn);
+	else
+		conn_process_read_stream(ctx, conn);
+}
+
+static void conn_cb(int fd, uint32_t revents, void *userdata)
 {
 	struct neutron_ctx *ctx = (struct neutron_ctx *)userdata;
 	struct neutron_conn *conn = neutron_ctx_find_connection(ctx, fd);
@@ -81,7 +122,7 @@ static int server_accept_conn(int server_fd, struct neutron_ctx *ctx)
 	neutron_ctx_add_conn(ctx, conn);
 
 	ret = neutron_loop_add(
-		ctx->loop, conn_fd, conn_accepted_cb, NEUTRON_FD_EVENT_IN, ctx);
+		ctx->loop, conn_fd, conn_cb, NEUTRON_FD_EVENT_IN, ctx);
 
 	if (ret) {
 		LOG_ERRNO("Failed to add connection fd to event loop");
@@ -146,19 +187,56 @@ struct neutron_conn *neutron_conn_new(int capacity)
 	conn->remove = 0;
 	conn->fd = -1;
 
+	conn->local = (struct sockaddr_storage *)calloc(
+		1, sizeof(struct sockaddr_storage));
+
+	if (!conn->local) {
+		LOG_ERRNO(
+			"Failed to allocate memory for local address in conn");
+		free(conn);
+		conn = NULL;
+		return NULL;
+	}
+
+	conn->peer = (struct sockaddr_storage *)calloc(
+		1, sizeof(struct sockaddr_storage));
+
+	if (!conn->peer) {
+		LOG_ERRNO(
+			"Failed to allocate memory for remote peer address in conn");
+		free(conn->local);
+		conn->local = NULL;
+		free(conn);
+		conn = NULL;
+		return NULL;
+	}
+
 	return conn;
 }
 
 void neutron_conn_destroy(struct neutron_conn *conn)
 {
 	if (conn) {
-		if (conn->readbuf.data)
+		if (conn->readbuf.data) {
 			free(conn->readbuf.data);
+			conn->readbuf.data = NULL;
+		}
 
-		if (conn->fd > 0)
+		if (conn->local) {
+			free(conn->local);
+			conn->local = NULL;
+		}
+
+		if (conn->peer) {
+			free(conn->peer);
+			conn->peer = NULL;
+		}
+
+		if (conn->fd > 0) {
 			close(conn->fd);
+			conn->fd = -1;
+		}
 
-		conn->fd = -1;
 		conn->readbuf.data = NULL;
 		conn->readbuf.capacity = 0;
 		conn->readbuf.datalen = 0;
@@ -345,7 +423,7 @@ int neutron_ctx_listen(struct neutron_ctx *ctx,
 	}
 
 	if (ctx->fd_cb)
-		(*ctx->fd_cb)(ctx->socket.fd, ctx->userdata);
+		(*ctx->fd_cb)(ctx, ctx->socket.fd, ctx->userdata);
 
 	ret = setsockopt(ctx->socket.fd,
 			 SOL_SOCKET,
@@ -395,12 +473,12 @@ int neutron_ctx_connect(struct neutron_ctx *ctx,
 			ssize_t addrlen)
 {
 	int ret = 0;
-	ctx->type = NEUTRON_CLIENT;
 
 	if (!ctx) {
 		LOGE("Failure: ctx is null");
 		return EINVAL;
 	}
+	ctx->type = NEUTRON_CLIENT;
 
 	if (!addr) {
 		LOGE("Failure: cannot connect to null address");
@@ -414,6 +492,10 @@ int neutron_ctx_connect(struct neutron_ctx *ctx,
 	}
 	ctx->socket.addr = (struct sockaddr_storage *)addr;
 	ctx->socket.addrlen = addrlen;
+
+	if (ctx->fd_cb) {
+		(*ctx->fd_cb)(ctx, ctx->socket.fd, ctx->userdata);
+	}
 
 	ret = connect(ctx->socket.fd,
 		      (struct sockaddr *)ctx->socket.addr,
@@ -430,7 +512,7 @@ int neutron_ctx_connect(struct neutron_ctx *ctx,
 
 	ret = neutron_loop_add(ctx->loop,
 			       ctx->socket.fd,
-			       connect_cb,
+			       conn_cb,
 			       NEUTRON_FD_EVENT_IN,
 			       (void *)ctx);
 	if (ret) {
@@ -447,28 +529,159 @@ int neutron_ctx_connect(struct neutron_ctx *ctx,
 	return ret;
 }
 
-void connect_cb(int conn_fd, uint32_t revents, void *userdata)
-{
-	struct neutron_ctx *ctx = (struct neutron_ctx *)userdata;
-	struct neutron_conn *conn = ctx->head;
-
-	if (!conn->remove && (revents & NEUTRON_FD_EVENT_IN))
-		conn_process_read(ctx, conn);
-	else if (!conn->remove && (revents & NEUTRON_FD_EVENT_OUT))
-		conn_process_write(ctx, conn);
-	else if (conn->remove || NEUTRON_FD_EVENT_ERROR)
-		neutron_ctx_remove_conn(ctx, conn);
-}
-
 int neutron_ctx_send(struct neutron_ctx *ctx, uint8_t *buf, uint32_t buflen)
 {
-	if (ctx->type != NEUTRON_CLIENT) {
-		LOGE("cannot call %s from a nonc-client context", __func__);
+	int ret = 0;
+	int len;
+	if (ctx->type == NEUTRON_CLIENT) {
+		len = send(ctx->socket.fd, buf, buflen, 0);
+		ret = len == buflen ? 0 : errno;
+	} else if (ctx->type == NEUTRON_SERVER) {
+		struct neutron_conn *aux = ctx->head;
+		while (aux) {
+			len = send(aux->fd, buf, buflen, 0);
+			ret = len == buflen ? 0 : errno;
+			if (ret != 0) {
+				LOGE("Failed to send the entire buffer to connection fd: %d",
+				     aux->fd);
+				return ret;
+			}
+			aux = aux->next;
+		}
+	}
+	return ret;
+}
+
+int neutron_ctx_bind(struct neutron_ctx *ctx,
+		     struct sockaddr *addr,
+		     ssize_t addrlen)
+{
+	int ret = 0;
+	int opt = 1;
+
+	if (!ctx) {
+		LOGE("Failure: ctx is null");
 		return EINVAL;
 	}
 
-	int len = send(ctx->socket.fd, buf, buflen, 0);
-	return len == buflen ? 0 : errno;
+	ctx->type = NEUTRON_DGRAM;
+
+	if (!addr) {
+		LOGE("Failure: addr is null");
+		return EINVAL;
+	}
+
+	ctx->socket.fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (ctx->socket.fd < 0) {
+		LOG_ERRNO("Failed to create socket fd");
+		return errno;
+	}
+
+	ret = setsockopt(ctx->socket.fd,
+			 SOL_SOCKET,
+			 SO_REUSEADDR | SO_REUSEPORT,
+			 &opt,
+			 sizeof(opt));
+	if (ret) {
+		LOG_ERRNO("Failed to setsockopt");
+		return ret;
+	}
+
+	if (ctx->fd_cb)
+		(*ctx->fd_cb)(ctx, ctx->socket.fd, ctx->userdata);
+
+	ret = bind(ctx->socket.fd, addr, addrlen);
+	if (ret < 0) {
+		LOG_ERRNO("Bind failed on udp socket");
+		return errno;
+	}
+
+	ctx->socket.addr = (struct sockaddr_storage *)addr;
+	ctx->socket.addrlen = addrlen;
+
+	struct neutron_conn *conn = neutron_conn_new(512);
+	conn->fd = ctx->socket.fd;
+	conn->remove = 0;
+
+	conn->local = ctx->socket.addr;
+	conn->local_addlren = ctx->socket.addrlen;
+	neutron_ctx_add_conn(ctx, conn);
+
+	ret = neutron_loop_add(ctx->loop,
+			       ctx->socket.fd,
+			       conn_cb,
+			       NEUTRON_FD_EVENT_IN,
+			       (void *)ctx);
+	if (ret) {
+		LOG_ERRNO("Failed to add client socket fd to loop");
+		return errno;
+	}
+
+	ret = neutron_ctx_notify_event(ctx, NEUTRON_EVENT_CONNECTED, conn);
+	if (ret) {
+		LOG_ERRNO("Failed to notify connection event");
+		return ret;
+	}
+
+	return ret;
+}
+
+int neutron_ctx_broadcast(struct neutron_ctx *ctx)
+{
+	int ret = 0;
+	int opt = 1;
+
+	if (!ctx) {
+		LOGE("Failure: ctx is null");
+		return EINVAL;
+	}
+
+	ctx->type = NEUTRON_DGRAM;
+	ctx->socket.fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (ctx->socket.fd < 0) {
+		LOG_ERRNO("Failed to create socket fd");
+		return errno;
+	}
+
+	ret = setsockopt(
+		ctx->socket.fd, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt));
+	if (ret) {
+		LOG_ERRNO("Failed to setsockopt");
+		return ret;
+	}
+
+	if (ctx->fd_cb)
+		(*ctx->fd_cb)(ctx, ctx->socket.fd, ctx->userdata);
+
+	struct neutron_conn *conn = neutron_conn_new(512);
+	conn->fd = ctx->socket.fd;
+	conn->remove = 0;
+
+	conn->local = ctx->socket.addr;
+	conn->local_addlren = ctx->socket.addrlen;
+	neutron_ctx_add_conn(ctx, conn);
+
+	ret = neutron_loop_add(ctx->loop,
+			       ctx->socket.fd,
+			       conn_cb,
+			       NEUTRON_FD_EVENT_IN,
+			       (void *)ctx);
+	if (ret) {
+		LOG_ERRNO("Failed to add client socket fd to loop");
+		return ret;
+	}
+
+	return 0;
+}
+
+int neutron_ctx_send_to(struct neutron_ctx *ctx,
+			const struct sockaddr *addr,
+			ssize_t addrlen,
+			uint8_t *buf,
+			uint32_t buflen)
+{
+	int datalen = sendto(ctx->socket.fd, buf, buflen, 0, addr, addrlen);
+	return datalen > 0 ? 0 : errno;
 }
 
 int neutron_ctx_disconnect(struct neutron_ctx *ctx)
@@ -480,6 +693,14 @@ int neutron_ctx_disconnect(struct neutron_ctx *ctx)
 
 	if (ret) {
 		LOG_ERRNO("Failed to notify disconneccted event");
+	}
+
+	struct neutron_conn *aux, *next;
+	aux = ctx->head;
+	while (aux) {
+		next = aux->next;
+		neutron_ctx_remove_conn(ctx, aux);
+		aux = next;
 	}
 
 	if (ctx->socket.fd > 0) {
@@ -518,7 +739,6 @@ int neutron_ctx_remove_conn(struct neutron_ctx *ctx, struct neutron_conn *conn)
 	}
 
 	if (found) {
-		VLOGE("HERE");
 		ret = neutron_ctx_notify_event(
 			ctx, NEUTRON_EVENT_DISCONNECTED, conn);
 		if (ret) {
@@ -538,24 +758,16 @@ int neutron_ctx_remove_conn(struct neutron_ctx *ctx, struct neutron_conn *conn)
 void neutron_ctx_destroy(struct neutron_ctx *ctx)
 {
 	if (ctx) {
-		if (ctx->socket.addr != NULL) {
-			free(ctx->socket.addr);
-			ctx->socket.addr = NULL;
-		}
-
-		if (ctx->socket.fd > 0)
-			close(ctx->socket.fd);
-
-		ctx->socket.fd = 0;
-		ctx->socket.addrlen = 0;
-
-		/* clear linked list */
 		struct neutron_conn *aux = ctx->head;
 		if (ctx->head) {
 			struct neutron_conn *aux = ctx->head;
 			ctx->head = ctx->head->next;
 			neutron_conn_destroy(aux);
 		}
+
+		ctx->socket.addr = NULL;
+		ctx->socket.fd = 0;
+		ctx->socket.addrlen = 0;
 
 		if (ctx->destroy_loop)
 			neutron_loop_destroy(ctx->loop);
