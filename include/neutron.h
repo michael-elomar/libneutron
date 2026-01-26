@@ -24,6 +24,7 @@ enum neutron_fd_event {
 enum neutron_ctx_type {
 	NEUTRON_SERVER = 0,
 	NEUTRON_CLIENT,
+	NEUTRON_DGRAM,
 };
 
 enum neutron_event {
@@ -34,14 +35,20 @@ enum neutron_event {
 
 typedef void (*neutron_fd_event_cb)(int fd, uint32_t revents, void *userdata);
 
-typedef void (*neutron_ctx_fd_cb)(int fd, void *userdata);
+typedef void (*neutron_ctx_fd_cb)(struct neutron_ctx *ctx,
+				  int fd,
+				  void *userdata);
 
 typedef void (*neutron_ctx_event_cb)(struct neutron_ctx *ctx,
 				     enum neutron_event event,
 				     struct neutron_conn *conn,
 				     void *userdata);
 
-typedef void (*neutron_ctx_data_cb)(int conn_fd, void *buf, uint32_t buflen);
+typedef void (*neutron_ctx_data_cb)(struct neutron_ctx *ctx,
+				    struct neutron_conn *conn,
+				    void *buf,
+				    uint32_t buflen,
+				    void *userdata);
 
 /* loop public API */
 
@@ -94,6 +101,18 @@ int neutron_ctx_connect(struct neutron_ctx *ctx,
 int neutron_ctx_disconnect(struct neutron_ctx *ctx);
 
 int neutron_ctx_send(struct neutron_ctx *ctx, uint8_t *buf, uint32_t buflen);
+
+int neutron_ctx_bind(struct neutron_ctx *ctx,
+		     struct sockaddr *addr,
+		     ssize_t addrlen);
+
+int neutron_ctx_broadcast(struct neutron_ctx *ctx);
+
+int neutron_ctx_send_to(struct neutron_ctx *ctx,
+			const struct sockaddr *addr,
+			ssize_t addrlen,
+			uint8_t *buf,
+			uint32_t buflen);
 
 void neutron_ctx_destroy(struct neutron_ctx *ctx);
 

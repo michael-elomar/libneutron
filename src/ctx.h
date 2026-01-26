@@ -16,6 +16,9 @@ struct neutron_conn {
 
 	uint8_t remove;
 
+	struct sockaddr_storage *local, *peer;
+	socklen_t local_addlren, peer_addrlen;
+
 	struct neutron_conn *next;
 };
 
