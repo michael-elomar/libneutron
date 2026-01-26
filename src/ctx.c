@@ -571,7 +571,7 @@ int neutron_ctx_bind(struct neutron_ctx *ctx,
 		return EINVAL;
 	}
 
-	ctx->socket.fd = socket(AF_INET, SOCK_DGRAM, 0);
+	ctx->socket.fd = socket(addr->sa_family, SOCK_DGRAM, 0);
 	if (ctx->socket.fd < 0) {
 		LOG_ERRNO("Failed to create socket fd");
 		return errno;
