@@ -12,6 +12,7 @@ struct neutron_fd;
 struct neutron_evt;
 struct neutron_ctx;
 struct neutron_conn;
+struct neutron_timer;
 
 enum neutron_fd_event {
 	NEUTRON_FD_EVENT_IN = 0x001,
@@ -51,6 +52,8 @@ typedef void (*neutron_ctx_data_cb)(struct neutron_ctx *ctx,
 				    void *userdata);
 
 typedef void (*neutron_evt_cb)(struct neutron_evt *evt, void *userdata);
+
+typedef void (*neutron_timer_cb)(struct neutron_timer *timer, void *userdata);
 
 /* loop public API */
 
@@ -131,6 +134,20 @@ int neutron_evt_detach(struct neutron_evt *evt, struct neutron_loop *loop);
 int neutron_evt_trigger(struct neutron_evt *evt);
 
 int neutron_evt_clear(struct neutron_evt *evt);
+
+/* timer public API */
+
+struct neutron_timer *neutron_timer_create(struct neutron_loop *loop,
+					   neutron_timer_cb cb,
+					   void *userdata);
+
+void neutron_timer_destroy(struct neutron_timer *timer);
+
+int neutron_timer_set(struct neutron_timer *timer,
+		      uint32_t delay,
+		      uint32_t period);
+
+int neutron_timer_clear(struct neutron_timer *timer);
 
 #ifdef __cplusplus
 }

@@ -15,6 +15,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUT_DIR}/lib/)
 set(SRC_FILES
 	src/loop.c
 	src/ctx.c
+	src/evt.c
+	src/timer.c
 )
 
 set(INCLUDE
