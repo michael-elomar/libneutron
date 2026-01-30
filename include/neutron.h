@@ -50,6 +50,8 @@ typedef void (*neutron_ctx_data_cb)(struct neutron_ctx *ctx,
 				    uint32_t buflen,
 				    void *userdata);
 
+typedef void (*neutron_evt_cb)(struct neutron_evt *evt, void *userdata);
+
 /* loop public API */
 
 struct neutron_loop *neutron_loop_create();
@@ -118,9 +120,17 @@ void neutron_ctx_destroy(struct neutron_ctx *ctx);
 
 /* event public API */
 
-struct neutron_evt *neutron_evt_create();
+struct neutron_evt *neutron_evt_create(int flags);
 
 void neutron_evt_destroy(struct neutron_evt *evt);
+
+int neutron_evt_attach(struct neutron_evt *evt, struct neutron_loop *loop);
+
+int neutron_evt_detach(struct neutron_evt *evt, struct neutron_loop *loop);
+
+int neutron_evt_trigger(struct neutron_evt *evt);
+
+int neutron_evt_clear(struct neutron_evt *evt);
 
 #ifdef __cplusplus
 }
