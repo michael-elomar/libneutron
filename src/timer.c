@@ -101,12 +101,12 @@ int neutron_timer_set(struct neutron_timer *timer,
 		      uint32_t period)
 {
 	struct itimerspec new_val;
-	new_val.it_value.tv_sec = (int)(delay / 1000);
-	new_val.it_value.tv_nsec = (delay - new_val.it_value.tv_sec) * 1e+6;
 
-	new_val.it_interval.tv_sec = (int)(period / 1000);
-	new_val.it_interval.tv_nsec =
-		(delay - new_val.it_interval.tv_sec) * 1e+6;
+	new_val.it_value.tv_sec = (long int)(delay / 1000);
+	new_val.it_value.tv_nsec = (delay % 1000) * 1e+6;
+
+	new_val.it_interval.tv_sec = (long int)(period / 1000);
+	new_val.it_interval.tv_nsec = (long int)(period % 1000) * 1e+6;
 
 	int ret = timerfd_settime(timer->tfd, 0, &new_val, NULL);
 	if (ret < 0) {

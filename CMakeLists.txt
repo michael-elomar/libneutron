@@ -42,3 +42,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 add_executable(test_ctx_udp examples/test_ctx_udp.c)
 target_link_libraries(test_ctx_udp ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
+
+add_executable(test_timer examples/test_timer.c)
+target_link_libraries(test_timer ${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
