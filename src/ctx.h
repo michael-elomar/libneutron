@@ -1,30 +1,9 @@
-#ifndef _NODE_H_
-#define _NODE_H_
+#ifndef _CTX_H_
+#define _CTX_H_
 
 #include <neutron.h>
 
 #define MAX_SERVER_CONNECTIONS 16
-
-struct neutron_conn {
-	struct {
-		uint8_t *data;
-		size_t datalen;
-		size_t capacity;
-	} readbuf;
-
-	int fd;
-
-	uint8_t remove;
-
-	struct sockaddr_storage *local, *peer;
-	socklen_t local_addlren, peer_addrlen;
-
-	struct neutron_conn *next;
-};
-
-struct neutron_conn *neutron_conn_new(int capacity);
-
-void neutron_conn_destroy(struct neutron_conn *conn);
 
 struct neutron_ctx {
 	struct neutron_loop *loop;
@@ -57,8 +36,6 @@ struct neutron_conn *neutron_ctx_find_connection(struct neutron_ctx *ctx,
 int neutron_ctx_notify_event(struct neutron_ctx *ctx,
 			     enum neutron_event,
 			     struct neutron_conn *conn);
-
-int neutron_ctx_remove_conn(struct neutron_ctx *ctx, struct neutron_conn *conn);
 
 void listen_cb(int server_fd, uint32_t revents, void *userdata);
 
