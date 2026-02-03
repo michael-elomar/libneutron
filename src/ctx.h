@@ -35,6 +35,7 @@ struct neutron_ctx {
 		int fd;
 		struct sockaddr_storage *addr;
 		socklen_t addrlen;
+		int type;
 	} socket;
 
 	void *userdata;

@@ -61,9 +61,12 @@ public:
 			cb, loop->getLoop(), userdata);
 	}
 
-	struct sockaddr_storage *parseAddress(std::string address)
+	int parseAddress(std::string address,
+			 struct sockaddr_storage *addr,
+			 socklen_t *addrlen)
 	{
-		return neutron_ctx_parse_address(address.c_str());
+		return neutron_ctx_parse_address(
+			address.c_str(), addr, addrlen);
 	}
 
 	int setSocketDataCallback(neutron_ctx_data_cb cb)
@@ -81,12 +84,12 @@ public:
 		return neutron_ctx_set_socket_event_cb(mCtx, cb);
 	}
 
-	int listen(struct sockaddr *addr, ssize_t addrlen)
+	int listen(struct sockaddr_storage *addr, ssize_t addrlen)
 	{
 		return neutron_ctx_listen(mCtx, addr, addrlen);
 	}
 
-	int connect(struct sockaddr *addr, ssize_t addrlen)
+	int connect(struct sockaddr_storage *addr, ssize_t addrlen)
 	{
 		return neutron_ctx_connect(mCtx, addr, addrlen);
 	}

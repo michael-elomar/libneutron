@@ -108,23 +108,25 @@ int main(int argc, char *argv[])
 	ctx = neutron_ctx_create_with_loop(
 		is_server ? server_event_cb : client_event_cb, loop, NULL);
 
-	if (is_server) {
-		neutron_ctx_bind(
-			ctx,
-			(struct sockaddr *)neutron_ctx_parse_address(argv[2]),
-			sizeof(struct sockaddr));
-		neutron_ctx_set_socket_data_cb(ctx, server_data_cb);
+	struct sockaddr_storage *addr =
+		calloc(1, sizeof(struct sockaddr_storage));
+	if (!addr) {
+		return -1;
+	}
+	socklen_t addrlen;
+	neutron_ctx_parse_address(argv[2], addr, &addrlen);
 
+	if (is_server) {
+		neutron_ctx_bind(ctx, (struct sockaddr *)addr, addrlen);
+		neutron_ctx_set_socket_data_cb(ctx, server_data_cb);
 	} else {
-		LOGI("Client side");
 		neutron_ctx_broadcast(ctx);
 		neutron_ctx_set_socket_data_cb(ctx, client_data_cb);
-		neutron_ctx_send_to(
-			ctx,
-			(struct sockaddr *)neutron_ctx_parse_address(argv[2]),
-			sizeof(struct sockaddr),
-			(uint8_t *)PING,
-			strlen(PING));
+		neutron_ctx_send_to(ctx,
+				    (struct sockaddr *)addr,
+				    addrlen,
+				    (uint8_t *)PING,
+				    strlen(PING));
 	}
 	while (running) {
 		neutron_loop_spin(loop);

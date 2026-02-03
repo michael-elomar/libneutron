@@ -98,17 +98,15 @@ int main(int argc, char *argv[])
 	ctx = neutron_ctx_create_with_loop(
 		is_server ? server_event_cb : client_event_cb, loop, NULL);
 
+	struct sockaddr_storage addr;
+	socklen_t addrlen;
+	neutron_ctx_parse_address(argv[2], &addr, &addrlen);
+
 	if (is_server) {
-		neutron_ctx_listen(
-			ctx,
-			(struct sockaddr *)neutron_ctx_parse_address(argv[2]),
-			sizeof(struct sockaddr));
+		neutron_ctx_listen(ctx, &addr, addrlen);
 		neutron_ctx_set_socket_data_cb(ctx, server_data_cb);
 	} else {
-		neutron_ctx_connect(
-			ctx,
-			(struct sockaddr *)neutron_ctx_parse_address(argv[2]),
-			sizeof(struct sockaddr));
+		neutron_ctx_connect(ctx, &addr, addrlen);
 		neutron_ctx_set_socket_data_cb(ctx, client_data_cb);
 		neutron_ctx_send(ctx, (uint8_t *)PING, strlen(PING));
 	}
