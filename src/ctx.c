@@ -162,6 +162,15 @@ cleanup:
 	return NULL;
 }
 
+struct neutron_loop *neutron_ctx_get_loop(struct neutron_ctx *ctx)
+{
+	if (!ctx) {
+		LOGE("Failure: neutron ctx is null");
+		return NULL;
+	}
+	return ctx->loop;
+}
+
 int neutron_ctx_parse_address(const char *address,
 			      struct sockaddr_storage *addr,
 			      socklen_t *addrlen)
@@ -421,7 +430,7 @@ int neutron_ctx_send(struct neutron_ctx *ctx, uint8_t *buf, uint32_t buflen)
 }
 
 int neutron_ctx_bind(struct neutron_ctx *ctx,
-		     struct sockaddr *addr,
+		     struct sockaddr_storage *addr,
 		     ssize_t addrlen)
 {
 	int ret = 0;
@@ -439,7 +448,7 @@ int neutron_ctx_bind(struct neutron_ctx *ctx,
 		return EINVAL;
 	}
 
-	ctx->socket.fd = socket(addr->sa_family, SOCK_DGRAM, 0);
+	ctx->socket.fd = socket(addr->ss_family, SOCK_DGRAM, 0);
 	if (ctx->socket.fd < 0) {
 		LOG_ERRNO("Failed to create socket fd");
 		return errno;
@@ -458,13 +467,13 @@ int neutron_ctx_bind(struct neutron_ctx *ctx,
 	if (ctx->fd_cb)
 		(*ctx->fd_cb)(ctx, ctx->socket.fd, ctx->userdata);
 
-	ret = bind(ctx->socket.fd, addr, addrlen);
+	ret = bind(ctx->socket.fd, (struct sockaddr *)addr, addrlen);
 	if (ret < 0) {
 		LOG_ERRNO("Bind failed on udp socket");
 		return errno;
 	}
 
-	ctx->socket.addr = (struct sockaddr_storage *)addr;
+	ctx->socket.addr = addr;
 	ctx->socket.addrlen = addrlen;
 
 	struct neutron_conn *conn = neutron_conn_new(512);
@@ -544,12 +553,17 @@ int neutron_ctx_broadcast(struct neutron_ctx *ctx)
 }
 
 int neutron_ctx_send_to(struct neutron_ctx *ctx,
-			const struct sockaddr *addr,
+			struct sockaddr_storage *addr,
 			ssize_t addrlen,
 			uint8_t *buf,
 			uint32_t buflen)
 {
-	int datalen = sendto(ctx->socket.fd, buf, buflen, 0, addr, addrlen);
+	int datalen = sendto(ctx->socket.fd,
+			     buf,
+			     buflen,
+			     0,
+			     (struct sockaddr *)addr,
+			     addrlen);
 	return datalen > 0 ? 0 : errno;
 }
 

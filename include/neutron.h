@@ -85,6 +85,8 @@ struct neutron_ctx *neutron_ctx_create_with_loop(neutron_ctx_event_cb cb,
 						 struct neutron_loop *loop,
 						 void *userdata);
 
+struct neutron_loop *neutron_ctx_get_loop(struct neutron_ctx *ctx);
+
 int neutron_ctx_parse_address(const char *address,
 			      struct sockaddr_storage *addr,
 			      socklen_t *addrlen);
@@ -110,13 +112,13 @@ int neutron_ctx_disconnect(struct neutron_ctx *ctx);
 int neutron_ctx_send(struct neutron_ctx *ctx, uint8_t *buf, uint32_t buflen);
 
 int neutron_ctx_bind(struct neutron_ctx *ctx,
-		     struct sockaddr *addr,
+		     struct sockaddr_storage *addr,
 		     ssize_t addrlen);
 
 int neutron_ctx_broadcast(struct neutron_ctx *ctx);
 
 int neutron_ctx_send_to(struct neutron_ctx *ctx,
-			const struct sockaddr *addr,
+			struct sockaddr_storage *addr,
 			ssize_t addrlen,
 			uint8_t *buf,
 			uint32_t buflen);
