@@ -127,7 +127,7 @@ void neutron_ctx_destroy(struct neutron_ctx *ctx);
 
 /* event public API */
 
-struct neutron_evt *neutron_evt_create(int flags);
+struct neutron_evt *neutron_evt_create(int flags, neutron_evt_cb cb);
 
 void neutron_evt_destroy(struct neutron_evt *evt);
 

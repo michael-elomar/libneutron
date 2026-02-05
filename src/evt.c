@@ -10,7 +10,7 @@ static void evt_callback(int fd, uint32_t revents, void *userdata)
 			(*evt->cb)(evt, evt->userdata);
 }
 
-struct neutron_evt *neutron_evt_create(int flags)
+struct neutron_evt *neutron_evt_create(int flags, neutron_evt_cb cb)
 {
 	struct neutron_evt *evt = calloc(1, sizeof(struct neutron_evt));
 	if (!evt) {
@@ -24,6 +24,7 @@ struct neutron_evt *neutron_evt_create(int flags)
 		LOG_ERRNO("Failure: cannot create eventfd");
 		goto clean;
 	}
+	evt->cb = cb;
 
 clean:
 	free(evt);

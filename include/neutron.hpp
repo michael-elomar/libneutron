@@ -413,7 +413,7 @@ public:
 public:
 	Event(int flags = 0)
 	{
-		mEvt = neutron_evt_create(flags);
+		mEvt = neutron_evt_create(flags, &Event::evtCallback);
 	}
 
 	~Event()
