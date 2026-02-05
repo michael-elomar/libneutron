@@ -1,3 +1,4 @@
+#include "timer.h"
 #include <neutron.h>
 #include <string>
 #include <vector>
@@ -134,10 +135,13 @@ typedef std::vector<Connection *> ConnectionList;
 
 class Context {
 public:
-	class EventHandler {
+	class Handler {
 	public:
-		inline EventHandler() {}
-		inline virtual ~EventHandler() {}
+		inline Handler() {}
+		inline virtual ~Handler() {}
+
+		inline virtual void onFdCreated(Context *ctx, int fd) = 0;
+
 		inline virtual void onConnected(Context *ctx,
 						Connection *conn) = 0;
 		inline virtual void onDisconnected(Context *ctx,
@@ -149,20 +153,20 @@ public:
 	};
 
 public:
-	Context(EventHandler *eventHandler, Loop *loop = nullptr)
+	Context(Handler *handler, Loop *loop = nullptr)
 	{
 		if (loop == nullptr) {
 			mCtx = neutron_ctx_create(&Context::eventCallback,
 						  this);
 			mIsLoopExternal = false;
-			mEventHandler = eventHandler;
+			mHandler = handler;
 			mLoop = new Loop(neutron_ctx_get_loop(mCtx));
 		} else {
 			mLoop = loop;
 			mCtx = neutron_ctx_create_with_loop(
 				&Context::eventCallback, loop->getLoop(), this);
 			mIsLoopExternal = true;
-			mEventHandler = eventHandler;
+			mHandler = handler;
 		}
 		setFdCallback();
 		setDataCallback();
@@ -200,6 +204,11 @@ public:
 						       &Context::eventCallback);
 	}
 
+	Loop *getLoop()
+	{
+		return mLoop;
+	}
+
 	int listen(struct sockaddr_storage *addr, ssize_t addrlen)
 	{
 		return neutron_ctx_listen(mCtx, addr, addrlen);
@@ -235,7 +244,7 @@ public:
 		return neutron_ctx_broadcast(mCtx);
 	}
 
-	int disonnect()
+	int disconnect()
 	{
 		return neutron_ctx_disconnect(mCtx);
 	}
@@ -273,13 +282,13 @@ private:
 		case NEUTRON_EVENT_CONNECTED:
 			conn = new Connection(_conn);
 			ctx->mConnections.push_back(conn);
-			ctx->mEventHandler->onConnected(ctx, conn);
+			ctx->mHandler->onConnected(ctx, conn);
 			break;
 		case NEUTRON_EVENT_DISCONNECTED:
 			it = ctx->findConn(_conn);
 			if (it != ctx->mConnections.end()) {
 				conn = *it;
-				ctx->mEventHandler->onDisconnected(ctx, conn);
+				ctx->mHandler->onDisconnected(ctx, conn);
 				ctx->mConnections.erase(it);
 				delete conn;
 			}
@@ -293,11 +302,29 @@ private:
 
 	inline static void dataCallback(struct neutron_ctx *_ctx,
 					struct neutron_conn *_conn,
-					void *_buf,
+					uint8_t *_buf,
 					uint32_t _buflen,
 					void *_userdata)
 	{
 		Context *ctx = reinterpret_cast<Context *>(_userdata);
+		Connection *conn = nullptr;
+		ConnectionList::iterator it;
+		bool created = false;
+
+		std::vector<uint8_t> buf(&_buf[0], &_buf[_buflen]);
+
+		it = ctx->findConn(_conn);
+		if (it != ctx->mConnections.end())
+			conn = *it;
+		else {
+			conn = new Connection(_conn);
+			created = true;
+		}
+
+		ctx->mHandler->recvData(ctx, conn, buf);
+
+		if (created)
+			delete conn;
 	}
 
 	inline static void fdCallback(struct neutron_ctx *_ctx,
@@ -305,6 +332,7 @@ private:
 				      void *_userdata)
 	{
 		Context *ctx = reinterpret_cast<Context *>(_userdata);
+		ctx->mHandler->onFdCreated(ctx, _fd);
 	}
 
 	inline ConnectionList::iterator findConn(struct neutron_conn *_conn)
@@ -320,9 +348,110 @@ private:
 
 private:
 	struct neutron_ctx *mCtx;
-	EventHandler *mEventHandler;
+	Handler *mHandler;
 	ConnectionList mConnections;
 	Loop *mLoop;
 	bool mIsLoopExternal;
 };
+
+class Timer {
+public:
+	class Handler {
+	public:
+		inline Handler() {}
+		inline virtual ~Handler() {}
+		inline virtual void processTimer() = 0;
+	};
+
+public:
+	Timer(Loop *loop, Handler *handler) : mLoop(loop), mHandler(handler)
+	{
+		mTimer = neutron_timer_create(
+			mLoop->getLoop(), &Timer::timerCallback, this);
+	}
+	~Timer()
+	{
+		neutron_timer_destroy(mTimer);
+	}
+
+	int set(uint32_t delay, uint32_t period = 0)
+	{
+		if (period == 0)
+			return neutron_timer_set(mTimer, delay);
+		else
+			return neutron_timer_set_periodic(
+				mTimer, delay, period);
+	}
+
+	int clear()
+	{
+		return neutron_timer_clear(mTimer);
+	}
+
+private:
+	static void timerCallback(struct neutron_timer *_timer, void *_userdata)
+	{
+		Timer *timer = reinterpret_cast<Timer *>(_userdata);
+		timer->mHandler->processTimer();
+	}
+
+private:
+	struct neutron_timer *mTimer;
+	Loop *mLoop;
+	Handler *mHandler;
+};
+
+class Event {
+public:
+	class Handler {
+	public:
+		inline Handler() {}
+		inline virtual ~Handler() {}
+		inline virtual void processEvent() = 0;
+	};
+
+public:
+	Event(int flags = 0)
+	{
+		mEvt = neutron_evt_create(flags);
+	}
+
+	~Event()
+	{
+		neutron_evt_destroy(mEvt);
+	}
+
+	int attachLoop(Loop *loop, Handler *handler)
+	{
+		mHandler = handler;
+		return neutron_evt_attach(mEvt, loop->getLoop());
+	}
+
+	int detachLoop(Loop *loop)
+	{
+		return neutron_evt_detach(mEvt, loop->getLoop());
+	}
+
+	int trigger()
+	{
+		return neutron_evt_trigger(mEvt);
+	}
+
+	int clear()
+	{
+		return neutron_evt_clear(mEvt);
+	}
+
+private:
+	static void evtCallback(struct neutron_evt *_evt, void *_userdata)
+	{
+		Event *event = reinterpret_cast<Event *>(_userdata);
+		event->mHandler->processEvent();
+	}
+
+private:
+	struct neutron_evt *mEvt;
+	Handler *mHandler;
+};
+
 } // namespace neutron

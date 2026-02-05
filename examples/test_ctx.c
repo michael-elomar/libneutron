@@ -20,7 +20,7 @@ void sig_handler(int signum)
 
 void server_data_cb(struct neutron_ctx *ctx,
 		    struct neutron_conn *conn,
-		    void *buf,
+		    uint8_t *buf,
 		    uint32_t buflen,
 		    void *userdata)
 {
@@ -30,7 +30,7 @@ void server_data_cb(struct neutron_ctx *ctx,
 
 void client_data_cb(struct neutron_ctx *ctx,
 		    struct neutron_conn *conn,
-		    void *buf,
+		    uint8_t *buf,
 		    uint32_t buflen,
 		    void *userdata)
 {

@@ -40,6 +40,10 @@ add_executable(test_ctx examples/test_ctx.c)
 target_link_libraries(test_ctx ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
 
+add_executable(test_ctx_cpp examples/test_ctx.cpp)
+target_link_libraries(test_ctx_cpp ${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
+
 add_executable(test_ctx_udp examples/test_ctx_udp.c)
 target_link_libraries(test_ctx_udp ${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})

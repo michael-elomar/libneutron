@@ -47,7 +47,7 @@ typedef void (*neutron_ctx_event_cb)(struct neutron_ctx *ctx,
 
 typedef void (*neutron_ctx_data_cb)(struct neutron_ctx *ctx,
 				    struct neutron_conn *conn,
-				    void *buf,
+				    uint8_t *buf,
 				    uint32_t buflen,
 				    void *userdata);
 
@@ -147,9 +147,11 @@ struct neutron_timer *neutron_timer_create(struct neutron_loop *loop,
 
 void neutron_timer_destroy(struct neutron_timer *timer);
 
-int neutron_timer_set(struct neutron_timer *timer,
-		      uint32_t delay,
-		      uint32_t period);
+int neutron_timer_set_periodic(struct neutron_timer *timer,
+			       uint32_t delay,
+			       uint32_t period);
+
+int neutron_timer_set(struct neutron_timer *timer, uint32_t delay);
 
 int neutron_timer_clear(struct neutron_timer *timer);
 

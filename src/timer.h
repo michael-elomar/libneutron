@@ -15,4 +15,8 @@ struct neutron_timer {
 	neutron_timer_cb cb;
 };
 
+int neutron_timer_fd_set(struct neutron_timer *timer,
+			 uint32_t delay,
+			 uint32_t period);
+
 #endif /* _TIMER_H_ */

@@ -1,3 +1,4 @@
+#include "neutron.h"
 #include <timer.h>
 #include <priv.h>
 
@@ -96,9 +97,9 @@ void neutron_timer_destroy(struct neutron_timer *timer)
 	}
 }
 
-int neutron_timer_set(struct neutron_timer *timer,
-		      uint32_t delay,
-		      uint32_t period)
+int neutron_timer_fd_set(struct neutron_timer *timer,
+			 uint32_t delay,
+			 uint32_t period)
 {
 	struct itimerspec new_val;
 
@@ -116,11 +117,23 @@ int neutron_timer_set(struct neutron_timer *timer,
 	return ret;
 }
 
+int neutron_timer_set(struct neutron_timer *timer, uint32_t delay)
+{
+	return neutron_timer_fd_set(timer, delay, 0);
+}
+
+int neutron_timer_set_periodic(struct neutron_timer *timer,
+			       uint32_t delay,
+			       uint32_t period)
+{
+	return neutron_timer_fd_set(timer, delay, period);
+}
+
 int neutron_timer_clear(struct neutron_timer *timer)
 {
 	if (!timer) {
 		LOGE("Failure: cannot clear null timer");
 		return EINVAL;
 	}
-	return neutron_timer_set(timer, 0, 0);
+	return neutron_timer_fd_set(timer, 0, 0);
 }
