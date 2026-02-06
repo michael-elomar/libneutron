@@ -42,9 +42,20 @@ static void timer_fd_cb(int fd, uint32_t revents, void *userdata)
 		(*timer->cb)(timer, timer->userdata);
 }
 
-struct neutron_timer *neutron_timer_create(struct neutron_loop *loop,
-					   neutron_timer_cb cb,
-					   void *userdata)
+struct neutron_timer *neutron_timer_create(neutron_timer_cb cb, void *userdata)
+{
+	struct neutron_loop *loop = neutron_loop_create();
+	if (!loop) {
+		neutron_loop_destroy(loop);
+		return NULL;
+	}
+
+	return neutron_timer_create_with_loop(loop, cb, userdata);
+}
+
+struct neutron_timer *neutron_timer_create_with_loop(struct neutron_loop *loop,
+						     neutron_timer_cb cb,
+						     void *userdata)
 {
 	if (!loop) {
 		LOGE("Failure: loop is null");
@@ -85,6 +96,11 @@ clean:
 	if (timer)
 		neutron_timer_destroy(timer);
 	return NULL;
+}
+
+struct neutron_loop *neutron_timer_get_loop(struct neutron_timer *timer)
+{
+	return timer->loop;
 }
 
 void neutron_timer_destroy(struct neutron_timer *timer)

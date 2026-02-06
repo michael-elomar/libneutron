@@ -141,9 +141,13 @@ int neutron_evt_clear(struct neutron_evt *evt);
 
 /* timer public API */
 
-struct neutron_timer *neutron_timer_create(struct neutron_loop *loop,
-					   neutron_timer_cb cb,
-					   void *userdata);
+struct neutron_timer *neutron_timer_create(neutron_timer_cb cb, void *userdata);
+
+struct neutron_timer *neutron_timer_create_with_loop(struct neutron_loop *loop,
+						     neutron_timer_cb cb,
+						     void *userdata);
+
+struct neutron_loop *neutron_timer_get_loop(struct neutron_timer *timer);
 
 void neutron_timer_destroy(struct neutron_timer *timer);
 

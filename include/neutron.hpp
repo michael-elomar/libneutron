@@ -364,9 +364,15 @@ public:
 	};
 
 public:
+	Timer(Handler *handler) : mHandler(handler)
+	{
+		mTimer = neutron_timer_create(&Timer::timerCallback, this);
+		mLoop = new Loop(neutron_timer_get_loop(mTimer));
+	}
+
 	Timer(Loop *loop, Handler *handler) : mLoop(loop), mHandler(handler)
 	{
-		mTimer = neutron_timer_create(
+		mTimer = neutron_timer_create_with_loop(
 			mLoop->getLoop(), &Timer::timerCallback, this);
 	}
 	~Timer()
