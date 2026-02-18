@@ -7,11 +7,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(OUT_DIR ${CMAKE_SOURCE_DIR}/out/)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUT_DIR}/bin/)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUT_DIR}/lib/)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUT_DIR}/lib/)
-
 set(SRC_FILES
 	src/loop.c
 	src/ctx.c
@@ -27,27 +22,15 @@ set(INCLUDE
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
+# set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER include/neutron.h)
 
-add_executable(test_loop examples/test_loop.c)
-target_link_libraries(test_loop ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
+#======== Install Support ========#
 
-add_executable(test_loop_cpp examples/test_loop.cpp)
-target_link_libraries(test_loop_cpp ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
+install(TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    PUBLIC_HEADER DESTINATION include)
 
-add_executable(test_ctx examples/test_ctx.c)
-target_link_libraries(test_ctx ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
-
-add_executable(test_ctx_cpp examples/test_ctx.cpp)
-target_link_libraries(test_ctx_cpp ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
-
-add_executable(test_ctx_udp examples/test_ctx_udp.c)
-target_link_libraries(test_ctx_udp ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
-
-add_executable(test_timer examples/test_timer.c)
-target_link_libraries(test_timer ${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
+# Install the headers
+install(DIRECTORY include/ DESTINATION include)

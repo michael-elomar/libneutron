@@ -5,7 +5,10 @@ set -e
 export VERSION=0.0.1
 export BUILD_TYPE="Debug"
 
-cmake --preset linux
-cmake --build build
+BUILD_DIR=build/$BUILD_TYPE
 
-mv build/compile_commands.json ./
+cmake --preset linux
+cmake --build $BUILD_DIR
+cmake --install $BUILD_DIR
+
+mv $BUILD_DIR/compile_commands.json ./
