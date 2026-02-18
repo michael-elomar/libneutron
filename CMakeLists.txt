@@ -21,8 +21,7 @@ set(INCLUDE
 )
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE})
-# set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER include/neutron.h)
+target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${INCLUDE}>)
 
 #======== Install Support ========#
 
@@ -34,3 +33,27 @@ install(TARGETS ${PROJECT_NAME}
 
 # Install the headers
 install(DIRECTORY include/ DESTINATION include)
+
+#======== Package Support ========#
+
+# Create a package configuration file
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Install the package configuration files
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Export targets for use by other projects
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+	)
