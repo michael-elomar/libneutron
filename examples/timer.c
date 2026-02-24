@@ -31,9 +31,9 @@ int main(int argc, char **argv)
 	signal(SIGPIPE, SIG_IGN);
 
 	self.loop = neutron_loop_create();
-	self.timer = neutron_timer_create(self.loop, timer_cb, NULL);
+	self.timer = neutron_timer_create_with_loop(self.loop, timer_cb, NULL);
 
-	neutron_timer_set(self.timer, 2000, 100);
+	neutron_timer_set_periodic(self.timer, 2000, 100);
 
 	self.running = 1;
 

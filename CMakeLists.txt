@@ -23,6 +23,15 @@ set(INCLUDE
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${INCLUDE}>)
 
+
+#======== Build examples ========#
+if(${BUILD_EXAMPLES} STREQUAL "ON")
+	add_subdirectory(examples)
+else()
+	message(STATUS "Build examples - skip")
+endif()
+
+
 #======== Install Support ========#
 
 install(TARGETS ${PROJECT_NAME}

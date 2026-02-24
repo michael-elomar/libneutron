@@ -9,7 +9,8 @@
 				"CMAKE_EXPORT_COMPILE_COMMANDS": "1",
 				"CMAKE_BUILD_TYPE": "$env{BUILD_TYPE}",
 				"CMAKE_PROJECT_VERSION": "$env{VERSION}",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/usr"
+				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/usr",
+				"BUILD_EXAMPLES": "OFF"
 			}
 		}
     ],

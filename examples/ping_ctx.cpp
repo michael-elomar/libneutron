@@ -133,12 +133,12 @@ public:
 	}
 
 private:
-	static App *sInstance;
+	inline static App *sInstance;
 	TestHandler *mHandler;
 	bool mRunning;
 };
 
-App *App::sInstance;
+// App *App::sInstance;
 
 static void usage(const char *progname)
 {
