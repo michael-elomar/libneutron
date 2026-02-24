@@ -138,8 +138,6 @@ private:
 	bool mRunning;
 };
 
-// App *App::sInstance;
-
 static void usage(const char *progname)
 {
 	fprintf(stderr, "%s -s <addr>\n", progname);
