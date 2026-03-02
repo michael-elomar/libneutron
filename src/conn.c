@@ -1,6 +1,6 @@
 #include <conn.h>
 #include <ctx.h>
-#include <priv.h>
+#include <neutron_priv.h>
 
 struct neutron_conn *neutron_conn_new(int capacity)
 {

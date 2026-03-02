@@ -1,4 +1,4 @@
-#include <priv.h>
+#include <neutron_priv.h>
 #include <evt.h>
 
 static void evt_callback(int fd, uint32_t revents, void *userdata)

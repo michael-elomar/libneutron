@@ -1,7 +1,7 @@
 #ifndef _NEUTRON_H_
 #define _NEUTRON_H_
 
-#include <priv.h>
+#include <neutron_priv.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,5 +1,5 @@
 #include <loop.h>
-#include <priv.h>
+#include <neutron_priv.h>
 
 static inline uint32_t neutron_events_to_epoll(uint32_t neutron_event)
 {
