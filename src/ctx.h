@@ -6,6 +6,11 @@
 
 #define MAX_SERVER_CONNECTIONS 16
 
+struct neutron_addr {
+	struct sockaddr_storage *ss;
+	socklen_t sslen;
+};
+
 struct neutron_ctx {
 	struct neutron_loop *loop;
 

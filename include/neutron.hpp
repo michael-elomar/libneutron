@@ -15,12 +15,9 @@ class Timer;
 
 class Address {
 public:
-	Address() : mAddressLen(0), mValid(false) {}
+	Address() : mValid(false) {}
 	Address(std::string str)
-		: mValid(neutron_ctx_parse_address(str.c_str(),
-						   &mSS,
-						   &mAddressLen)
-			 == 0)
+		: mAddr(neutron_addr_parse(str.c_str())), mValid(mAddr != NULL)
 	{
 	}
 
@@ -31,17 +28,16 @@ public:
 
 	socklen_t len() const
 	{
-		return mAddressLen;
+		return neutron_addr_get_len(mAddr);
 	}
 
-	struct sockaddr_storage *addr()
+	struct neutron_addr *addr()
 	{
-		return &mSS;
+		return mAddr;
 	}
 
 private:
-	struct sockaddr_storage mSS;
-	socklen_t mAddressLen;
+	struct neutron_addr *mAddr;
 	const bool mValid;
 };
 
@@ -180,13 +176,6 @@ public:
 			delete mLoop;
 	}
 
-	int parseAddress(std::string str,
-			 struct sockaddr_storage *addr,
-			 socklen_t *addrlen)
-	{
-		return neutron_ctx_parse_address(str.c_str(), addr, addrlen);
-	}
-
 	int setDataCallback()
 	{
 		return neutron_ctx_set_socket_data_cb(mCtx,
@@ -209,34 +198,34 @@ public:
 		return mLoop;
 	}
 
-	int listen(struct sockaddr_storage *addr, ssize_t addrlen)
+	int listen(struct neutron_addr *addr)
 	{
-		return neutron_ctx_listen(mCtx, addr, addrlen);
+		return neutron_ctx_listen(mCtx, addr);
 	}
 
 	int listen(Address &address)
 	{
-		return neutron_ctx_listen(mCtx, address.addr(), address.len());
+		return neutron_ctx_listen(mCtx, address.addr());
 	}
 
-	int connect(struct sockaddr_storage *addr, ssize_t addrlen)
+	int connect(struct neutron_addr *addr)
 	{
-		return neutron_ctx_connect(mCtx, addr, addrlen);
+		return neutron_ctx_connect(mCtx, addr);
 	}
 
 	int connect(Address &address)
 	{
-		return neutron_ctx_connect(mCtx, address.addr(), address.len());
+		return neutron_ctx_connect(mCtx, address.addr());
 	}
 
-	int bind(struct sockaddr_storage *addr, ssize_t addrlen)
+	int bind(struct neutron_addr *addr)
 	{
-		return neutron_ctx_bind(mCtx, addr, addrlen);
+		return neutron_ctx_bind(mCtx, addr);
 	}
 
 	int bind(Address &address)
 	{
-		return neutron_ctx_bind(mCtx, address.addr(), address.len());
+		return neutron_ctx_bind(mCtx, address.addr());
 	}
 
 	int broadcast()
@@ -254,18 +243,14 @@ public:
 		return neutron_ctx_send(mCtx, buf, buflen);
 	}
 
-	int sendTo(struct sockaddr_storage *addr,
-		   ssize_t addrlen,
-		   uint8_t *buf,
-		   uint32_t buflen)
+	int sendTo(struct neutron_addr *addr, uint8_t *buf, uint32_t buflen)
 	{
-		return neutron_ctx_send_to(mCtx, addr, addrlen, buf, buflen);
+		return neutron_ctx_send_to(mCtx, addr, buf, buflen);
 	}
 
 	int sentTo(Address &address, uint8_t *buf, uint32_t buflen)
 	{
-		return neutron_ctx_send_to(
-			mCtx, address.addr(), address.len(), buf, buflen);
+		return neutron_ctx_send_to(mCtx, address.addr(), buf, buflen);
 	}
 
 private:

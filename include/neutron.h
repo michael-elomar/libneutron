@@ -15,6 +15,7 @@ struct neutron_evt;
 struct neutron_ctx;
 struct neutron_conn;
 struct neutron_timer;
+struct neutron_addr;
 
 enum neutron_fd_event {
 	NEUTRON_FD_EVENT_IN = 0x001,
@@ -79,6 +80,13 @@ void neutron_loop_wakeup(struct neutron_loop *loop);
 
 void neutron_loop_display_registered_fds(struct neutron_loop *loop);
 
+/* address parsing public API */
+struct neutron_addr *neutron_addr_parse(const char *address);
+
+socklen_t neutron_addr_get_len(struct neutron_addr *addr);
+
+struct sockaddr_storage *neutron_addr_get_sock(struct neutron_addr *addr);
+
 /* ctx public API */
 
 struct neutron_ctx *neutron_ctx_create(neutron_ctx_event_cb cb, void *userdata);
@@ -89,10 +97,6 @@ struct neutron_ctx *neutron_ctx_create_with_loop(neutron_ctx_event_cb cb,
 
 struct neutron_loop *neutron_ctx_get_loop(struct neutron_ctx *ctx);
 
-int neutron_ctx_parse_address(const char *address,
-			      struct sockaddr_storage *addr,
-			      socklen_t *addrlen);
-
 int neutron_ctx_set_socket_data_cb(struct neutron_ctx *ctx,
 				   neutron_ctx_data_cb cb);
 
@@ -101,27 +105,20 @@ int neutron_ctx_set_socket_fd_cb(struct neutron_ctx *ctx, neutron_ctx_fd_cb cb);
 int neutron_ctx_set_socket_event_cb(struct neutron_ctx *ctx,
 				    neutron_ctx_event_cb cb);
 
-int neutron_ctx_listen(struct neutron_ctx *ctx,
-		       struct sockaddr_storage *addr,
-		       ssize_t addrlen);
+int neutron_ctx_listen(struct neutron_ctx *ctx, struct neutron_addr *addr);
 
-int neutron_ctx_connect(struct neutron_ctx *ctx,
-			struct sockaddr_storage *addr,
-			ssize_t addrlen);
+int neutron_ctx_connect(struct neutron_ctx *ctx, struct neutron_addr *addr);
 
 int neutron_ctx_disconnect(struct neutron_ctx *ctx);
 
 int neutron_ctx_send(struct neutron_ctx *ctx, uint8_t *buf, uint32_t buflen);
 
-int neutron_ctx_bind(struct neutron_ctx *ctx,
-		     struct sockaddr_storage *addr,
-		     ssize_t addrlen);
+int neutron_ctx_bind(struct neutron_ctx *ctx, struct neutron_addr *addr);
 
 int neutron_ctx_broadcast(struct neutron_ctx *ctx);
 
 int neutron_ctx_send_to(struct neutron_ctx *ctx,
-			struct sockaddr_storage *addr,
-			ssize_t addrlen,
+			struct neutron_addr *addr,
 			uint8_t *buf,
 			uint32_t buflen);
 

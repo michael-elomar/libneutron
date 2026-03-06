@@ -170,36 +170,40 @@ struct neutron_loop *neutron_ctx_get_loop(struct neutron_ctx *ctx)
 	return ctx->loop;
 }
 
-int neutron_ctx_parse_address(const char *address,
-			      struct sockaddr_storage *addr,
-			      socklen_t *addrlen)
+struct neutron_addr *neutron_addr_parse(const char *address)
 {
 	if (strlen(address) > 64)
 		return EINVAL;
 
-	if (!addr)
-		return EINVAL;
-
 	int ret = 0;
+	struct neutron_addr *neutron_addr =
+		(struct neutron_addr *)calloc(1, sizeof(struct neutron_addr));
+	if (!neutron_addr) {
+		LOG_ERRNO("Failure: cannot allocate memory for address");
+		return NULL;
+	}
 
-	char *addr_cpy = strdup(address);
-	char *protocol = strtok(addr_cpy, ":");
+	char *address_cpy = strdup(address);
+	char *protocol = strtok(address_cpy, ":");
 	if (!protocol) {
 		LOGE("Address format incorrect: failed to parse protocol");
-		ret = EINVAL;
 		goto cleanup;
 	}
 
 	char *addr_body = strtok(NULL, ":");
 	if (!addr_body) {
 		LOGE("Address format incorrect: failed to parse address");
-		ret = EINVAL;
 		goto cleanup;
 	}
 
 	if (strcmp(protocol, "unix") == 0) {
-		struct sockaddr_un *sock_un;
-		sock_un = (struct sockaddr_un *)addr;
+		struct sockaddr_un *sock_un = (struct sockaddr_un *)calloc(
+			1, sizeof(struct sockaddr_un));
+
+		if (!sock_un) {
+			LOG_ERRNO("Failed to allocate unix socket address");
+			goto cleanup;
+		}
 
 		if (addr_body[0] == '/')
 			sprintf(sock_un->sun_path, "%s", addr_body);
@@ -207,7 +211,8 @@ int neutron_ctx_parse_address(const char *address,
 			sprintf(sock_un->sun_path, "/tmp/%s", addr_body);
 
 		sock_un->sun_family = AF_UNIX;
-		*addrlen = SUN_LEN(sock_un);
+		neutron_addr->ss = (struct sockaddr_storage *)sock_un;
+		neutron_addr->sslen = SUN_LEN(sock_un);
 	} else {
 		char *port = strtok(NULL, ":");
 		if (!port) {
@@ -215,25 +220,60 @@ int neutron_ctx_parse_address(const char *address,
 			ret = EINVAL;
 			goto cleanup;
 		}
-		struct sockaddr_in *sock_in;
-		sock_in = (struct sockaddr_in *)addr;
-		uint32_t addr_nb;
-		sock_in->sin_port = htons(atoi(port));
 
 		if (strcmp(protocol, "inet") == 0) {
-			inet_pton(AF_INET, addr_body, &addr_nb);
+			struct sockaddr_in *sock_in =
+				(struct sockaddr_in *)calloc(
+					1, sizeof(struct sockaddr_in));
+
+			if (!sock_in) {
+				LOG_ERRNO(
+					"Failed to allocate inet socket address");
+				goto cleanup;
+			}
+
+			inet_pton(AF_INET, addr_body, &sock_in->sin_addr);
+			sock_in->sin_port = htons(atoi(port));
 			sock_in->sin_family = AF_INET;
+
+			neutron_addr->ss = (struct sockaddr_storage *)sock_in;
+			neutron_addr->sslen = sizeof(struct sockaddr_in);
 		} else if (strcmp(protocol, "inet6") == 0) {
-			inet_pton(AF_INET6, addr_body, &addr_nb);
-			sock_in->sin_family = AF_INET6;
+			struct sockaddr_in6 *sock_in6 =
+				(struct sockaddr_in6 *)calloc(
+					1, sizeof(struct sockaddr_in6));
+
+			if (!sock_in6) {
+				LOG_ERRNO(
+					"Failed to allocate inet socket address");
+				goto cleanup;
+			}
+
+			inet_pton(AF_INET6, addr_body, &sock_in6->sin6_addr);
+			sock_in6->sin6_port = htons(atoi(port));
+			sock_in6->sin6_family = AF_INET6;
+
+			neutron_addr->ss = (struct sockaddr_storage *)sock_in6;
+			neutron_addr->sslen = sizeof(struct sockaddr_in6);
 		}
-		sock_in->sin_addr.s_addr = addr_nb;
-		*addrlen = sizeof(*sock_in);
 	}
+	free(address_cpy);
+	return neutron_addr;
 
 cleanup:
-	free(addr_cpy);
-	return ret;
+	free(neutron_addr);
+	free(address_cpy);
+	return NULL;
+}
+
+socklen_t neutron_addr_get_len(struct neutron_addr *addr)
+{
+	return addr->sslen;
+}
+
+struct sockaddr_storage *neutron_addr_get_socket(struct neutron_addr *addr)
+{
+	return addr->ss;
 }
 
 int neutron_ctx_set_socket_data_cb(struct neutron_ctx *ctx,
@@ -278,20 +318,18 @@ struct neutron_conn *neutron_ctx_find_connection(struct neutron_ctx *ctx,
 	return aux->next;
 }
 
-int neutron_ctx_listen(struct neutron_ctx *ctx,
-		       struct sockaddr_storage *addr,
-		       ssize_t addrlen)
+int neutron_ctx_listen(struct neutron_ctx *ctx, struct neutron_addr *addr)
 {
 	int ret, opt = 1;
 
-	if (!ctx || !addr)
+	if (!ctx || !addr || !addr->ss)
 		return EINVAL;
 
 	ctx->type = NEUTRON_SERVER;
 
-	ctx->socket.addr = addr;
-	ctx->socket.addrlen = addrlen;
-	ctx->socket.type = addr->ss_family;
+	ctx->socket.addr = addr->ss;
+	ctx->socket.addrlen = addr->sslen;
+	ctx->socket.type = addr->ss->ss_family;
 	ctx->socket.fd = socket(ctx->socket.type, SOCK_STREAM, 0);
 
 	if (ctx->socket.fd < 0) {
@@ -342,9 +380,7 @@ void listen_cb(int server_fd, uint32_t revents, void *userdata)
 	server_accept_conn(server_fd, userdata);
 }
 
-int neutron_ctx_connect(struct neutron_ctx *ctx,
-			struct sockaddr_storage *addr,
-			ssize_t addrlen)
+int neutron_ctx_connect(struct neutron_ctx *ctx, struct neutron_addr *addr)
 {
 	int ret = 0;
 
@@ -354,13 +390,13 @@ int neutron_ctx_connect(struct neutron_ctx *ctx,
 	}
 	ctx->type = NEUTRON_CLIENT;
 
-	if (!addr) {
+	if (!addr || !addr->ss) {
 		LOGE("Failure: cannot connect to null address");
 		return EINVAL;
 	}
-	ctx->socket.addr = (struct sockaddr_storage *)addr;
-	ctx->socket.addrlen = addrlen;
-	ctx->socket.type = addr->ss_family;
+	ctx->socket.addr = addr->ss;
+	ctx->socket.addrlen = addr->sslen;
+	ctx->socket.type = addr->ss->ss_family;
 
 	ctx->socket.fd = socket(ctx->socket.type, SOCK_STREAM, 0);
 	if (ctx->socket.fd < 0) {
@@ -428,9 +464,7 @@ int neutron_ctx_send(struct neutron_ctx *ctx, uint8_t *buf, uint32_t buflen)
 	return ret;
 }
 
-int neutron_ctx_bind(struct neutron_ctx *ctx,
-		     struct sockaddr_storage *addr,
-		     ssize_t addrlen)
+int neutron_ctx_bind(struct neutron_ctx *ctx, struct neutron_addr *addr)
 {
 	int ret = 0;
 	int opt = 1;
@@ -447,7 +481,7 @@ int neutron_ctx_bind(struct neutron_ctx *ctx,
 		return EINVAL;
 	}
 
-	ctx->socket.fd = socket(addr->ss_family, SOCK_DGRAM, 0);
+	ctx->socket.fd = socket(addr->ss->ss_family, SOCK_DGRAM, 0);
 	if (ctx->socket.fd < 0) {
 		LOG_ERRNO("Failed to create socket fd");
 		return errno;
@@ -466,14 +500,14 @@ int neutron_ctx_bind(struct neutron_ctx *ctx,
 	if (ctx->fd_cb)
 		(*ctx->fd_cb)(ctx, ctx->socket.fd, ctx->userdata);
 
-	ret = bind(ctx->socket.fd, (struct sockaddr *)addr, addrlen);
+	ret = bind(ctx->socket.fd, (struct sockaddr *)addr->ss, addr->sslen);
 	if (ret < 0) {
 		LOG_ERRNO("Bind failed on udp socket");
 		return errno;
 	}
 
-	ctx->socket.addr = addr;
-	ctx->socket.addrlen = addrlen;
+	ctx->socket.addr = addr->ss;
+	ctx->socket.addrlen = addr->sslen;
 
 	struct neutron_conn *conn = neutron_conn_new(512);
 	conn->fd = ctx->socket.fd;
@@ -552,8 +586,7 @@ int neutron_ctx_broadcast(struct neutron_ctx *ctx)
 }
 
 int neutron_ctx_send_to(struct neutron_ctx *ctx,
-			struct sockaddr_storage *addr,
-			ssize_t addrlen,
+			struct neutron_addr *addr,
 			uint8_t *buf,
 			uint32_t buflen)
 {
@@ -561,8 +594,8 @@ int neutron_ctx_send_to(struct neutron_ctx *ctx,
 			     buf,
 			     buflen,
 			     0,
-			     (struct sockaddr *)addr,
-			     addrlen);
+			     (struct sockaddr *)addr->ss,
+			     addr->sslen);
 	return datalen > 0 ? 0 : errno;
 }
 

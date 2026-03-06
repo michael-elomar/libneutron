@@ -10,7 +10,7 @@
 				"CMAKE_BUILD_TYPE": "$env{BUILD_TYPE}",
 				"CMAKE_PROJECT_VERSION": "$env{VERSION}",
 				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/usr",
-				"BUILD_EXAMPLES": "OFF"
+				"BUILD_EXAMPLES": "ON"
 			}
 		}
     ],
