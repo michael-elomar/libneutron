@@ -1,5 +1,6 @@
 #include <neutron.hpp>
 #include <signal.h>
+#include <log.h>
 
 int running = 1;
 neutron::Loop *loop;

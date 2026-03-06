@@ -1,7 +1,9 @@
 #ifndef _NEUTRON_H_
 #define _NEUTRON_H_
 
-#include <neutron_priv.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/socket.h>
 
 #ifdef __cplusplus
 extern "C" {

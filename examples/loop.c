@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <log.h>
 
 int running = 1;
 struct neutron_loop *loop;

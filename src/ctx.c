@@ -1,4 +1,3 @@
-#include <neutron_priv.h>
 #include <ctx.h>
 #include <conn.h>
 #include <loop.h>
@@ -643,8 +642,8 @@ void neutron_ctx_destroy(struct neutron_ctx *ctx)
 	if (ctx) {
 		if (ctx->socket.type == AF_UNIX
 		    && ctx->type == NEUTRON_SERVER) {
-			unlink(((struct sockaddr_un *)ctx->socket.addr)
-				       ->sun_path);
+			(void)remove(((struct sockaddr_un *)ctx->socket.addr)
+					     ->sun_path);
 		}
 
 		struct neutron_conn *aux = ctx->head;

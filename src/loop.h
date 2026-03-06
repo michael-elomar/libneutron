@@ -1,6 +1,7 @@
 #ifndef _LOOP_H_
 #define _LOOP_H_
 
+#include <neutron_priv.h>
 #include <neutron.h>
 
 #define LOOP_WAKEUP_MAGIC 0x35

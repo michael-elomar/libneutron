@@ -1,6 +1,5 @@
 #include <neutron.h>
 #include <timer.h>
-#include <neutron_priv.h>
 
 static void timer_fd_cb(int fd, uint32_t revents, void *userdata)
 {

@@ -1,6 +1,7 @@
 #include <neutron.hpp>
 #include <signal.h>
 #include <unistd.h>
+#include <log.h>
 
 class TestHandler : public neutron::Context::Handler {
 public:

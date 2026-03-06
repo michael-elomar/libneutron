@@ -34,10 +34,25 @@ endif()
 
 #======== Install Support ========#
 
-install(TARGETS ${PROJECT_NAME}
+set(INSTALL_TARGETS
+	${PROJECT_NAME}
+)
+
+if(${BUILD_EXAMPLES} STREQUAL "ON")
+	list(APPEND INSTALL_TARGETS
+		example_loop
+		example_loop_cpp
+		ping_ctx
+		ping_ctx_cpp
+		timer
+	)
+endif()
+
+install(TARGETS ${INSTALL_TARGETS}
     EXPORT ${PROJECT_NAME}Targets
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
+	RUNTIME DESTINATION bin
     PUBLIC_HEADER DESTINATION include)
 
 # Install the headers

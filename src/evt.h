@@ -3,6 +3,7 @@
 
 #define NEUTRON_EVT_MAGIC 0xBEEF
 
+#include <neutron_priv.h>
 #include <neutron.h>
 
 struct neutron_evt {

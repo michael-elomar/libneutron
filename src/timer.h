@@ -1,6 +1,7 @@
 #ifndef _TIMER_H_
 #define _TIMER_H_
 
+#include <neutron_priv.h>
 #include <neutron.h>
 
 struct neutron_timer {

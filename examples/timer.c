@@ -1,5 +1,6 @@
 #include <neutron.h>
 #include <signal.h>
+#include <log.h>
 
 struct main_ctx {
 	struct neutron_loop *loop;

@@ -1,6 +1,7 @@
 #ifndef _CTX_H_
 #define _CTX_H_
 
+#include <neutron_priv.h>
 #include <neutron.h>
 
 #define MAX_SERVER_CONNECTIONS 16
