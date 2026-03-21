@@ -15,7 +15,7 @@ class Timer;
 class Address {
 public:
 	Address() : mValid(false) {}
-	Address(std::string str)
+	Address(const std::string &str)
 		: mAddr(neutron_addr_parse(str.c_str())), mValid(mAddr != NULL)
 	{
 	}
