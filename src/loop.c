@@ -211,17 +211,15 @@ int neutron_loop_spin(struct neutron_loop *loop)
 
 void neutron_loop_destroy(struct neutron_loop *loop)
 {
-	struct neutron_fd *head = loop->nfd;
-	struct neutron_fd *aux;
-	while (head) {
-		aux = head;
-		head = head->next;
-		free(aux);
+	struct neutron_fd **head = &loop->nfd;
+	struct neutron_fd *cur = *head, *next = NULL;
+
+	while (cur != NULL) {
+		next = cur->next;
+		free(cur);
+		cur = next;
 	}
-	if (loop) {
-		free(loop);
-		loop = NULL;
-	}
+	*head = NULL;
 }
 
 void neutron_loop_wakeup(struct neutron_loop *loop)

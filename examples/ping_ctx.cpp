@@ -109,7 +109,10 @@ public:
 		else
 			mHandler = new ClientHandler();
 	}
-	~App() {}
+	~App()
+	{
+		delete mHandler;
+	}
 
 	static void sigHandler(int signum)
 	{

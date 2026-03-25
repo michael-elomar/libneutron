@@ -126,7 +126,7 @@ struct neutron_ctx *neutron_ctx_create_with_loop(neutron_ctx_event_cb cb,
 	ctx->event_cb = cb;
 	ctx->loop = loop;
 	ctx->userdata = userdata;
-	ctx->destroy_loop = 0;
+	ctx->ext_loop = 1;
 	return ctx;
 
 cleanup:
@@ -151,7 +151,7 @@ struct neutron_ctx *neutron_ctx_create(neutron_ctx_event_cb cb, void *userdata)
 		goto cleanup;
 	}
 
-	ctx->destroy_loop = 1;
+	ctx->ext_loop = 0;
 
 	return ctx;
 
@@ -689,7 +689,7 @@ void neutron_ctx_destroy(struct neutron_ctx *ctx)
 		ctx->socket.fd = 0;
 		ctx->socket.addrlen = 0;
 
-		if (ctx->destroy_loop)
+		if (!ctx->ext_loop && ctx->loop != NULL)
 			neutron_loop_destroy(ctx->loop);
 
 		free(ctx);

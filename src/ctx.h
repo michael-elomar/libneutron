@@ -25,7 +25,7 @@ struct neutron_ctx {
 
 	void *userdata;
 
-	int destroy_loop;
+	int ext_loop;
 
 	neutron_ctx_fd_cb fd_cb;
 
