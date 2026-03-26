@@ -1,3 +1,5 @@
+#pragma once
+
 #include <neutron.h>
 #include <string>
 #include <vector>
